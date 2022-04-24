@@ -7,5 +7,5 @@ spec:
   template:
     spec:
       containers:
-      - image: smartxworks/cape-manager:latest
+      - image: smartelf/cape-manager-amd64:dev2
         name: manager

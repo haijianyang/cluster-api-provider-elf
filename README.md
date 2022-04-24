@@ -65,6 +65,9 @@ export ELF_TEMPLATE=336820d7-5ba5-4707-9d0c-8f3e583b950f
 
 # 创建工作负载集群的配置文件
 clusterctl generate yaml --from templates/cluster-template.yaml > cape-cluster.yaml
+
+# CLUSTER_CLASS_NAME
+
 ```
 
 **创建工作负载集群**
