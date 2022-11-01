@@ -236,33 +236,9 @@ func (r *ElfMachineReconciler) reconcileDeleteVM(ctx *context.MachineContext) er
 		return err
 	}
 
-	// Handle task
-	if vm.EntityAsyncStatus == nil {
-		var task *models.Task
-		if ctx.ElfMachine.HasTask() {
-			task, _ = ctx.VMService.GetTask(ctx.ElfMachine.Status.TaskRef)
-
-			ctx.ElfMachine.SetTask("")
-		}
-
-		if task != nil && *task.Status == models.TaskStatusFAILED {
-			errorMessage := ""
-			if task.ErrorMessage != nil {
-				errorMessage = *task.ErrorMessage
-			}
-
-			conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.TaskFailureReason, clusterv1.ConditionSeverityInfo, errorMessage)
-
-			ctx.Logger.Error(errors.New("VM task failed"), "",
-				"vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef, "message", errorMessage)
-		} else if task != nil {
-			ctx.Logger.Info("VM task successful",
-				"vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef)
-		}
-	} else {
-		ctx.Logger.Info("Waiting for VM task done",
-			"vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef)
-
+	if ok, err := r.reconcileVMTask(ctx, vm); err != nil {
+		return err
+	} else if !ok {
 		return nil
 	}
 
@@ -535,19 +511,14 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 
 		// Create VM failed
 
-		errorMessage := err.Error()
-		task, _ := ctx.VMService.GetTask(ctx.ElfMachine.Status.TaskRef)
-		if task != nil && *task.Status == models.TaskStatusFAILED && task.ErrorMessage != nil {
-			errorMessage = *task.ErrorMessage
+		if _, err := r.reconcileVMTask(ctx, nil); err != nil {
+			return nil, err
 		}
 
-		ctx.Logger.Error(errors.New("VM task failed"), "", "vmRef", ctx.ElfMachine.Status.VMRef, "message", errorMessage)
-
-		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.TaskFailureReason, clusterv1.ConditionSeverityInfo, errorMessage)
-
+		// If create VM failed, tower deletes the VM
 		ctx.ElfMachine.SetVM("")
 
-		return nil, errors.Errorf("VM task failed for ElfMachine %s/%s", ctx.ElfMachine.Namespace, ctx.ElfMachine.Name)
+		return nil, errors.Wrapf(err, "failed to create VM for ElfMachine %s/%s", ctx.ElfMachine.Namespace, ctx.ElfMachine.Name)
 	}
 
 	// Remove VM disconnection timestamp
@@ -558,31 +529,9 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 		ctx.Logger.Info("The VM was found again", "vmRef", ctx.ElfMachine.Status.VMRef, "disconnectionTimestamp", vmDisconnectionTimestamp.Format(time.RFC3339))
 	}
 
-	// Create VM successful or power on VM done
-	if vm.EntityAsyncStatus == nil {
-		var task *models.Task
-		if ctx.ElfMachine.HasTask() {
-			task, _ = ctx.VMService.GetTask(ctx.ElfMachine.Status.TaskRef)
-
-			ctx.ElfMachine.SetTask("")
-		}
-
-		if task != nil && *task.Status == models.TaskStatusFAILED {
-			errorMessage := ""
-			if task.ErrorMessage != nil {
-				errorMessage = *task.ErrorMessage
-			}
-
-			ctx.Logger.Error(errors.New("VM task failed"), "",
-				"vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef, "message", errorMessage)
-		} else if task != nil {
-			ctx.Logger.Info("VM task successful",
-				"vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef)
-		}
-	} else {
-		ctx.Logger.Info("Waiting for VM task done",
-			"vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef)
-
+	if ok, err := r.reconcileVMTask(ctx, vm); err != nil {
+		return nil, err
+	} else if !ok {
 		return vm, nil
 	}
 
@@ -609,6 +558,72 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 	}
 
 	return vm, nil
+}
+
+func (r *ElfMachineReconciler) reconcileVMTask(ctx *context.MachineContext, vm *models.VM) (bool, error) {
+	taskRef := ctx.ElfMachine.Status.TaskRef
+	vmRef := ctx.ElfMachine.Status.VMRef
+
+	var err error
+	var task *models.Task
+	if ctx.ElfMachine.HasTask() {
+		task, err = ctx.VMService.GetTask(taskRef)
+		if err != nil {
+			if service.IsTaskNotFound(err) {
+				ctx.ElfMachine.SetTask("")
+				ctx.Logger.Error(err, fmt.Sprintf("task %s of VM %s is missing", taskRef, vmRef))
+			} else {
+				return false, errors.Wrapf(err, "failed to get task %s for VM %s", taskRef, vmRef)
+			}
+		}
+	}
+
+	if task == nil {
+		// VM is performing an operation
+		if vm != nil && vm.EntityAsyncStatus != nil {
+			ctx.Logger.Info("Waiting for VM task done", "vmRef", vmRef, "taskRef", taskRef)
+
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	switch *task.Status {
+	case models.TaskStatusFAILED:
+		errorMessage := ""
+		if task.ErrorMessage != nil {
+			errorMessage = *task.ErrorMessage
+		}
+
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.TaskFailureReason, clusterv1.ConditionSeverityInfo, errorMessage)
+
+		if service.IsCloudInitConfigError(errorMessage) {
+			ctx.ElfMachine.Status.FailureReason = capierrors.MachineStatusErrorPtr(capierrors.CreateMachineError)
+			ctx.ElfMachine.Status.FailureMessage = pointer.StringPtr(fmt.Sprintf("VM cloud-init config error: %s", service.FormatCloudInitError(errorMessage)))
+		}
+
+		ctx.ElfMachine.SetTask("")
+
+		ctx.Logger.Error(errors.New("VM task failed"), "", "vmRef", vmRef, "taskRef", taskRef, "message", errorMessage)
+
+		return true, nil
+	case models.TaskStatusSUCCESSED:
+		ctx.ElfMachine.SetTask("")
+
+		ctx.Logger.Info("VM task successful", "vmRef", vmRef, "taskRef", taskRef)
+
+		return true, nil
+	default:
+		status := ""
+		if task.Status != nil {
+			status = string(*task.Status)
+		}
+
+		ctx.Logger.Info("Waiting for VM task done", "vmRef", vmRef, "taskRef", taskRef, "taskStatus", status)
+	}
+
+	return false, nil
 }
 
 func (r *ElfMachineReconciler) reconcileProviderID(ctx *context.MachineContext, vm *models.VM) (bool, error) {
