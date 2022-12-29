@@ -97,7 +97,7 @@ kubectl get cluster
 kubectl get kubeadmcontrolplane -w
 
 # 获取集群的 kubeconfig 配置
-clusterctl get kubeconfig cape-cluster > cape-cluster.kubeconfig
+clusterctl get kubeconfig elfk8s > cape-cluster.kubeconfig
 
 # 部署 CNI, 可以选择 flannel 或者 calico（可选）
 kubectl --kubeconfig=./cape-cluster.kubeconfig \

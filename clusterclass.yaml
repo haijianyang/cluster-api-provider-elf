@@ -1,0 +1,267 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: ClusterClass
+metadata:
+  name: elf-clusterclass
+  namespace: default
+spec:
+  controlPlane:
+    machineInfrastructure:
+      ref:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: ElfMachineTemplate
+        name: elf-clusterclass-controlplane-machine-template
+        namespace: default
+    ref:
+      apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+      kind: KubeadmControlPlaneTemplate
+      name: elf-clusterclass-controlplane
+      namespace: default
+  infrastructure:
+    ref:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: ElfClusterTemplate
+      name: elf-clusterclass
+      namespace: default
+  patches:
+  - definitions:
+    - jsonPatches:
+      - op: add
+        path: /spec/template/spec/controlPlaneEndpoint
+        valueFrom:
+          template: |
+            host: '{{ .controlPlaneIpAddr }}'
+            port: 6443
+      - op: add
+        path: /spec/template/spec/cluster
+        valueFrom:
+          variable: elfCluster
+      - op: add
+        path: /spec/template/spec/tower/server
+        valueFrom:
+          variable: infraServer.server
+      - op: add
+        path: /spec/template/spec/tower/username
+        valueFrom:
+          variable: infraServer.username
+      - op: add
+        path: /spec/template/spec/tower/password
+        valueFrom:
+          variable: infraServer.password
+      - op: add
+        path: /spec/template/spec/tower/authMode
+        valueFrom:
+          variable: infraServer.authMode
+      - op: add
+        path: /spec/template/spec/tower/skipTLSVerify
+        valueFrom:
+          variable: infraServer.skipTLSVerify
+      selector:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: ElfClusterTemplate
+        matchResources:
+          infrastructureCluster: true
+    name: infraClusterSubstitutions
+  - definitions:
+    - jsonPatches:
+      - op: add
+        path: /spec/template/spec/kubeadmConfigSpec/files/0/content
+        valueFrom:
+          variable: kubeVipPodManifest
+      selector:
+        apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+        kind: KubeadmControlPlaneTemplate
+        matchResources:
+          controlPlane: true
+    name: kubeVipEnabled
+  - definitions:
+    - jsonPatches:
+      - op: add
+        path: /spec/template/spec/kubeadmConfigSpec/clusterConfiguration/imageRepository
+        valueFrom:
+          variable: imageRepository
+      selector:
+        apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+        kind: KubeadmControlPlaneTemplate
+        matchResources:
+          controlPlane: true
+    name: imageRepository
+  - definitions:
+    - jsonPatches:
+      - op: add
+        path: /spec/template/spec/template
+        valueFrom:
+          variable: vmTemplate
+      selector:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: ElfMachineTemplate
+        matchResources:
+          controlPlane: true
+    name: vmTemplate
+  variables:
+  - name: elfCluster
+    required: true
+    schema:
+      openAPIV3Schema:
+        description: ElfCluster is a unique identifier for a ELF cluster.
+        type: string
+  - name: infraServer
+    required: true
+    schema:
+      openAPIV3Schema:
+        properties:
+          authMode:
+            type: string
+          password:
+            type: string
+          server:
+            type: string
+          skipTLSVerify:
+            type: boolean
+          username:
+            type: string
+        type: object
+  - name: vmTemplate
+    required: true
+    schema:
+      openAPIV3Schema:
+        description: vm template.
+        type: string
+  - name: controlPlaneIpAddr
+    required: true
+    schema:
+      openAPIV3Schema:
+        description: Floating VIP for the control plane.
+        type: string
+  - name: kubeVipPodManifest
+    required: true
+    schema:
+      openAPIV3Schema:
+        description: kube-vip manifest for the control plane.
+        type: string
+  - name: imageRepository
+    required: true
+    schema:
+      openAPIV3Schema:
+        default: registry.cn-hangzhou.aliyuncs.com/google_containers
+        description: ImageRepository is the container registry to pull images from.
+        example: k8s.gcr.io
+        type: string
+  workers:
+    machineDeployments:
+    - class: elf-clusterclass-worker
+      template:
+        bootstrap:
+          ref:
+            apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+            kind: KubeadmConfigTemplate
+            name: elf-clusterclass-worker-bootstrap-template
+            namespace: default
+        infrastructure:
+          ref:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: ElfMachineTemplate
+            name: elf-clusterclass-worker-machine-template
+            namespace: default
+        metadata: {}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElfClusterTemplate
+metadata:
+  name: elf-clusterclass
+  namespace: default
+spec:
+  template:
+    spec:
+      tower: {}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KubeadmControlPlaneTemplate
+metadata:
+  name: elf-clusterclass-controlplane
+  namespace: default
+spec:
+  template:
+    spec:
+      kubeadmConfigSpec:
+        clusterConfiguration:
+          apiServer:
+            extraArgs: null
+          controllerManager:
+            extraArgs: null
+        files:
+        - owner: root:root
+          path: /etc/kubernetes/manifests/kube-vip.yaml
+        initConfiguration:
+          nodeRegistration:
+            kubeletExtraArgs: null
+            name: '{{ ds.meta_data.hostname }}'
+        joinConfiguration:
+          nodeRegistration:
+            kubeletExtraArgs: null
+            name: '{{ ds.meta_data.hostname }}'
+        preKubeadmCommands:
+        - hostname "{{ ds.meta_data.hostname }}"
+        - echo "::1         ipv6-localhost ipv6-loopback" >/etc/hosts
+        - echo "127.0.0.1   localhost" >>/etc/hosts
+        - echo "127.0.0.1   {{ ds.meta_data.hostname }}" >>/etc/hosts
+        - echo "{{ ds.meta_data.hostname }}" >/etc/hostname
+        useExperimentalRetryJoin: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElfMachineTemplate
+metadata:
+  name: elf-clusterclass-controlplane-machine-template
+  namespace: default
+spec:
+  template:
+    spec:
+      cloneMode: FastClone
+      diskGiB: 0
+      ha: true
+      memoryMiB: 8192
+      network:
+        devices:
+        - networkType: IPV4_DHCP
+          vlan: dd1f408f-7715-48c1-a817-13c3568f1d93_4cd00407-63ca-440b-80b7-ceacfccb8d08
+        nameservers: []
+      numCPUS: 6
+      template: ""
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElfMachineTemplate
+metadata:
+  name: elf-clusterclass-worker-machine-template
+  namespace: default
+spec:
+  template:
+    spec:
+      cloneMode: FastClone
+      diskGiB: 0
+      ha: true
+      memoryMiB: 8192
+      network:
+        devices:
+        - networkType: IPV4_DHCP
+          vlan: dd1f408f-7715-48c1-a817-13c3568f1d93_4cd00407-63ca-440b-80b7-ceacfccb8d08
+        nameservers: []
+      numCPUS: 6
+      template: clb6pt28xhuve0958gf8ccefg
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: elf-clusterclass-worker-bootstrap-template
+  namespace: default
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs: null
+          name: '{{ ds.meta_data.hostname }}'
+      preKubeadmCommands:
+      - hostname "{{ ds.meta_data.hostname }}"
+      - echo "::1         ipv6-localhost ipv6-loopback" >/etc/hosts
+      - echo "127.0.0.1   localhost" >>/etc/hosts
+      - echo "127.0.0.1   {{ ds.meta_data.hostname }}" >>/etc/hosts
+      - echo "{{ ds.meta_data.hostname }}" >/etc/hostname

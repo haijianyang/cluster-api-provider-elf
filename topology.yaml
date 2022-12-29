@@ -1,0 +1,89 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cluster.x-k8s.io/cluster-name: elfk8s
+  name: elfk8s
+  namespace: default
+spec:
+  topology:
+    class: elf-clusterclass
+    controlPlane:
+      replicas: 1
+    variables:
+    - name: elfCluster
+      value: dd1f408f-7715-48c1-a817-13c3568f1d93
+    - name: infraServer
+      value:
+        authMode: LOCAL
+        password: K5yt3hcjtUE4Teqe
+        server: tower.caas.smtx.io
+        skipTLSVerify: false
+        username: system-service
+    - name: kubeVipPodManifest
+      value: |
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          creationTimestamp: null
+          name: kube-vip
+          namespace: kube-system
+        spec:
+          containers:
+          - args:
+            - manager
+            env:
+            - name: cp_enable
+              value: "true"
+            - name: vip_interface
+              value: ens4
+            - name: address
+              value: 10.255.160.1
+            - name: port
+              value: "6443"
+            - name: vip_arp
+              value: "true"
+            - name: vip_leaderelection
+              value: "true"
+            - name: vip_leaseduration
+              value: "15"
+            - name: vip_renewdeadline
+              value: "10"
+            - name: vip_retryperiod
+              value: "2"
+            image: registry.smtx.io/kubesmart/kube-vip/kube-vip:v0.5.7
+            imagePullPolicy: IfNotPresent
+            name: kube-vip
+            resources: {}
+            securityContext:
+              capabilities:
+                add:
+                - NET_ADMIN
+                - NET_RAW
+            volumeMounts:
+            - mountPath: /etc/kubernetes/admin.conf
+              name: kubeconfig
+          hostAliases:
+          - hostnames:
+            - kubernetes
+            ip: 127.0.0.1
+          hostNetwork: true
+          volumes:
+          - hostPath:
+              path: /etc/kubernetes/admin.conf
+              type: FileOrCreate
+            name: kubeconfig
+        status: {}
+    - name: controlPlaneIpAddr
+      value: 10.255.160.1
+    - name: imageRepository
+      value: registry.smtx.io/kubesmart
+    - name: vmTemplate
+      value: clb6pt28xhuve0958gf8ccefg
+    version: 1.22.15
+    workers:
+      machineDeployments:
+      - class: elf-clusterclass-worker
+        metadata: {}
+        name: md-0
+        replicas: 1

@@ -217,10 +217,11 @@ func (svr *TowerVMService) Clone(
 			},
 		},
 		CloudInit: &models.TemplateCloudInit{
-			Hostname:    util.TowerString(elfMachine.Name),
-			UserData:    util.TowerString(bootstrapData),
-			Networks:    networks,
-			Nameservers: elfMachine.Spec.Network.Nameservers,
+			Hostname:            util.TowerString(elfMachine.Name),
+			UserData:            util.TowerString(bootstrapData),
+			Networks:            networks,
+			Nameservers:         elfMachine.Spec.Network.Nameservers,
+			DefaultUserPassword: util.TowerString("HC!r0cks"),
 		},
 	}
 
