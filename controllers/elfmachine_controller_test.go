@@ -1047,9 +1047,10 @@ var _ = Describe("ElfMachineReconciler", func() {
 				newCP2 := fake.NewTowerVM()
 				newCP2.Host = &models.NestedHost{ID: service.TowerString(*host1.ID)}
 				placementGroup := fake.NewVMPlacementGroup([]string{*oldCP3.ID, *newCP2.ID})
-				kcp.Spec.Replicas = pointer.Int32(3)
-				kcp.Status.UpdatedReplicas = 3
-				kcp.Status.Replicas = 4
+				// kcp.Spec.Replicas = pointer.Int32(3)
+				// kcp.Status.UpdatedReplicas = 3
+				// kcp.Status.Replicas = 4
+				conditions.MarkFalse(kcp, controlplanev1.MachinesSpecUpToDateCondition, controlplanev1.RollingUpdateInProgressReason, clusterv1.ConditionSeverityWarning, "")
 				ctrlContext := newCtrlContexts(elfCluster, cluster, elfMachine, machine, secret, md, kcp)
 				machineContext := newMachineContext(ctrlContext, elfCluster, cluster, elfMachine, machine, mockVMService)
 				fake.InitOwnerReferences(ctrlContext, elfCluster, cluster, elfMachine, machine)

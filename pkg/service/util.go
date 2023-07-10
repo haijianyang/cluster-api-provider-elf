@@ -78,7 +78,7 @@ func IsAvailableHost(host *models.Host, memory int64) (bool, string) {
 }
 
 // GetAvailableHosts returns the available hosts.
-func GetAvailableHosts(hosts []*models.Host, memory int64) []*models.Host {
+func  rm GetAvailableHosts(hosts []*models.Host, memory int64) []*models.Host {
 	var availableHosts []*models.Host
 	for i := 0; i < len(hosts); i++ {
 		if ok, _ := IsAvailableHost(hosts[i], memory); ok {
@@ -135,6 +135,17 @@ func GetHostFromList(hostID string, hosts []*models.Host) *models.Host {
 	return nil
 }
 
+func FindHostsFromList(hostSet sets.Set[string], hosts []*models.Host) []*models.Host {
+	var foundHosts []*models.Host
+	for i := 0; i < len(hosts); i++ {
+		if hostSet.Has(*hosts[i].ID) {
+			foundHosts = append(foundHosts, hosts[i])
+		}
+	}
+
+	return foundHosts
+}
+
 func HostsToSet(hosts []*models.Host) sets.Set[string] {
 	hostSet := sets.Set[string]{}
 	for i := 0; i < len(hosts); i++ {
@@ -153,6 +164,9 @@ func FilterHosts(hosts []*models.Host, needFilteredHosts sets.Set[string]) []*mo
 	}
 
 	return filteredHosts
+}
+
+func DifferenceHosts([]*models.Host) {
 }
 
 // GetVMsInPlacementGroup returns a Set of IDs of the virtual machines in the placement group.

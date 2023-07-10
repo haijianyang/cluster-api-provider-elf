@@ -1166,3 +1166,43 @@ func (r *ElfMachineReconciler) getK8sNodeIP(ctx *context.MachineContext, nodeNam
 
 	return "", nil
 }
+
+func test(ctrlClient client.Client, elfMachine *infrav1.ElfMachine) {
+	key := client.ObjectKey{
+		Namespace: elfMachine.Namespace,
+		Name:      elfMachine.Name,
+	}
+
+	for {
+		time.Sleep(1 * time.Second)
+		em := &infrav1.ElfMachine{}
+		err := ctrlClient.Get(goctx.TODO(), key, em)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return
+			}
+
+			fmt.Println("********", err)
+			continue
+		}
+
+		newEM := em.DeepCopy()
+		patchHelper, err := patch.NewHelper(em, ctrlClient)
+		if err != nil {
+			fmt.Println("********NewHelper", err)
+			continue
+		}
+
+		if newEM.Annotations == nil {
+			newEM.Annotations = make(map[string]string)
+		}
+		newEM.Annotations["aoao"] = time.Now().String()
+
+		if err := patchHelper.Patch(goctx.TODO(), newEM); err != nil {
+			fmt.Println("********patch", err)
+			continue
+		}
+
+		fmt.Println("**********xiaohaha", newEM.Name)
+	}
+}
