@@ -1160,3 +1160,75 @@ func (r *ElfMachineReconciler) getK8sNodeIP(ctx *context.MachineContext, nodeNam
 
 	return "", nil
 }
+
+// Handling duplicate virtual machines.
+//
+// NOTE: These will be removed when Tower fixes issue with duplicate virtual machines.
+
+// deleteDuplicateVMs deletes the duplicate virtual machines.
+// Only be used to delete duplicate VMs before the ElfCluster is deleted.
+func (r *ElfMachineReconciler) deleteDuplicateVMs(ctx *context.MachineContext) (reconcile.Result, error) {
+	vms, err := ctx.VMService.FindVMsByName(ctx.ElfMachine.Name)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if len(vms) <= 1 {
+		return reconcile.Result{}, nil
+	}
+
+	var vmsToBeDeleted []*models.VM
+	for i := 0; i < len(vms); i++ {
+		if *vms[i].ID {
+		}
+	}
+}
+
+// deleteVM deletes the specified virtual machine.
+//
+// The return value:
+// 1. true means that the VM is deleted.
+// 2. false and error is nil means the VM is not deleted.
+func (r *ElfMachineReconciler) deleteVM(ctx *context.ClusterContext, vm *models.VM) (bool, error) {
+	// VM is performing an operation
+	if vm.EntityAsyncStatus != nil {
+		ctx.Logger.V(1).Info("Waiting for VM task done before deleting", "vmID", *vm.ID, "name", *vm.Name)
+		return false, nil
+	}
+
+	// Power off the VM
+	if *vm.Status != models.VMStatusSTOPPED {
+		task, err := ctx.VMService.PowerOff(*vm.ID)
+		if err != nil {
+			return false, err
+		}
+
+		withLatestStatusTask, err := ctx.VMService.WaitTask(*task.ID, waitDuplicateVMTaskTimeout, waitDuplicateVMTaskInterval)
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to wait for VM power off task done in %s: key %s/%s, taskID %s", waitDuplicateVMTaskTimeout, *vm.Name, *vm.ID, *task.ID)
+		}
+
+		if *withLatestStatusTask.Status == models.TaskStatusFAILED {
+			return false, errors.Errorf("failed to power off VM %s/%s in task %s", *vm.Name, *vm.ID, *withLatestStatusTask.ID)
+		}
+	}
+
+	// Delete the VM
+	task, err := ctx.VMService.Delete(*vm.ID)
+	if err != nil {
+		return false, err
+	}
+
+	withLatestStatusTask, err := ctx.VMService.WaitTask(*task.ID, waitDuplicateVMTaskTimeout, waitDuplicateVMTaskInterval)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to wait for VM deletion task done in %s: key %s/%s, taskID %s", waitDuplicateVMTaskTimeout, *vm.Name, *vm.ID, *task.ID)
+	}
+
+	if *withLatestStatusTask.Status == models.TaskStatusFAILED {
+		return false, errors.Errorf("failed to delete VM %s/%s in task %s", *vm.Name, *vm.ID, *withLatestStatusTask.ID)
+	}
+
+	ctx.Logger.V(1).Info("Duplicate VM already deleted", "vmID", *vm.ID, "name", *vm.Name)
+
+	return true, nil
+}

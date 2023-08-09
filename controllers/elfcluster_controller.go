@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/smartxworks/cloudtower-go-sdk/v2/models"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -221,6 +223,10 @@ func (r *ElfClusterReconciler) reconcileDelete(ctx *context.ClusterContext) (rec
 		if err := r.reconcileDeleteLabels(ctx); err != nil {
 			return reconcile.Result{}, errors.Wrapf(err, "failed to delete labels")
 		}
+
+		if result, err := r.reconcileDeleteVMs(ctx); err != nil || !result.IsZero() {
+			return result, err
+		}
 	}
 
 	// Cluster is deleted so remove the finalizer.
@@ -272,7 +278,7 @@ func (r *ElfClusterReconciler) reconcileDeleteLabel(ctx *context.ClusterContext,
 	return nil
 }
 
-func (r *ElfClusterReconciler) reconcileNormal(ctx *context.ClusterContext) (reconcile.Result, error) { //nolint:unparam
+func (r *ElfClusterReconciler) reconcileNormal(ctx *context.ClusterContext) (reconcile.Result, error) {
 	ctx.Logger.Info("Reconciling ElfCluster")
 
 	// If the ElfCluster doesn't have our finalizer, add it.
@@ -289,6 +295,10 @@ func (r *ElfClusterReconciler) reconcileNormal(ctx *context.ClusterContext) (rec
 	// If the cluster is deleted, that's mean that the workload cluster is being deleted
 	if !ctx.Cluster.DeletionTimestamp.IsZero() {
 		return reconcile.Result{}, nil
+	}
+
+	if result, err := r.reconcileVMs(ctx); err != nil || !result.IsZero() {
+		return result, err
 	}
 
 	// Wait until the API server is online and accessible.
@@ -341,4 +351,148 @@ func (r *ElfClusterReconciler) isAPIServerOnline(ctx *context.ClusterContext) bo
 	}
 
 	return false
+}
+
+// Handling duplicate virtual machines.
+//
+// NOTE: These will be removed when Tower fixes issue with duplicate virtual machines.
+
+const (
+	// duplicateVMDefaultRequeueTimeout is the default time for how long to wait when
+	// requeueing a duplicate VM operation.
+	duplicateVMDefaultRequeueTimeout = 1 * time.Minute
+
+	// waitDuplicateVMTaskInterval is the default interval time polling task.
+	waitDuplicateVMTaskInterval = 10 * time.Second
+
+	// waitDuplicateVMTaskTimeout is the default timeout for waiting for task to complete.
+	waitDuplicateVMTaskTimeout = 1 * time.Minute
+)
+
+// reconcileDeleteVMs deletes all virtual machines in the cluster.
+// Only be used to delete duplicate VMs after all ElfMachines have been deleted.
+func (r *ElfClusterReconciler) reconcileDeleteVMs(ctx *context.ClusterContext) (reconcile.Result, error) {
+	machinesToBeDeleted, err := ctx.VMService.FindVMsByName(ctx.Cluster.Name)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	return r.deleteVMs(ctx, machinesToBeDeleted)
+}
+
+// reconcileVMs deletes the duplicate virtual machines.
+// Only be used to delete duplicate VMs before the ElfCluster is deleted.
+func (r *ElfClusterReconciler) reconcileVMs(ctx *context.ClusterContext) (reconcile.Result, error) {
+	vms, err := ctx.VMService.FindVMsByName(ctx.Cluster.Name)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	var machinesToBeDeleted []*models.VM
+	vmMap := make(map[string]*models.VM)
+	for i := 0; i < len(vms); i++ {
+		vm, ok := vmMap[*vms[i].Name]
+		if !ok {
+			vmMap[*vms[i].Name] = vms[i]
+			continue
+		}
+
+		var elfMachine infrav1.ElfMachine
+		if err := r.Client.Get(r, client.ObjectKey{Name: *vm.Name, Namespace: ctx.Cluster.Namespace}, &elfMachine); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+
+			return reconcile.Result{}, err
+		}
+
+		// When two virtual machines with the same name appear,
+		// ElfMachine randomly selects one of the them.
+		// So we just delete the one that is not selected by ElfMachine.
+
+		var machineToBeDeleted *models.VM
+		if *vm.ID == elfMachine.Status.VMRef || *vm.LocalID == elfMachine.Status.VMRef {
+			machineToBeDeleted = vms[i]
+		} else if *vms[i].ID == elfMachine.Status.VMRef || *vms[i].LocalID == elfMachine.Status.VMRef {
+			machineToBeDeleted = vm
+		}
+
+		if machineToBeDeleted == nil {
+			ctx.Logger.Info("Waiting for ElfMachine to select one of the duplicate VMs before deleting the other", "vmIDs", []string{*vm.ID, *vms[i].ID}, "name", *vm.Name)
+		} else {
+			machinesToBeDeleted = append(machinesToBeDeleted, machineToBeDeleted)
+		}
+	}
+
+	return r.deleteVMs(ctx, machinesToBeDeleted)
+}
+
+// deleteVMs deletes the specified virtual machines.
+func (r *ElfClusterReconciler) deleteVMs(ctx *context.ClusterContext, vms []*models.VM) (reconcile.Result, error) {
+	undeletedVMCount := 0 //nolint:ifshort
+	for i := 0; i < len(vms); i++ {
+		// When there are duplicate virtual machines, the service of Tower is unstable,
+		// so concurrent deletion operations are not performed.
+		// If there is a deletion operation error, just return and try again.
+		if ok, err := r.deleteVM(ctx, vms[i]); err != nil {
+			return reconcile.Result{}, err
+		} else if !ok {
+			undeletedVMCount += 1
+		}
+	}
+
+	if undeletedVMCount > 0 {
+		return reconcile.Result{RequeueAfter: duplicateVMDefaultRequeueTimeout}, nil
+	}
+
+	return reconcile.Result{}, nil
+}
+
+// deleteVM deletes the specified virtual machine.
+//
+// The return value:
+// 1. true means that the VM is deleted.
+// 2. false and error is nil means the VM is not deleted.
+func (r *ElfClusterReconciler) deleteVM(ctx *context.ClusterContext, vm *models.VM) (bool, error) {
+	// VM is performing an operation
+	if vm.EntityAsyncStatus != nil {
+		ctx.Logger.V(1).Info("Waiting for VM task done before deleting", "vmID", *vm.ID, "name", *vm.Name)
+		return false, nil
+	}
+
+	// Power off the VM
+	if *vm.Status != models.VMStatusSTOPPED {
+		task, err := ctx.VMService.PowerOff(*vm.ID)
+		if err != nil {
+			return false, err
+		}
+
+		withLatestStatusTask, err := ctx.VMService.WaitTask(*task.ID, waitDuplicateVMTaskTimeout, waitDuplicateVMTaskInterval)
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to wait for VM power off task done in %s: key %s/%s, taskID %s", waitDuplicateVMTaskTimeout, *vm.Name, *vm.ID, *task.ID)
+		}
+
+		if *withLatestStatusTask.Status == models.TaskStatusFAILED {
+			return false, errors.Errorf("failed to power off VM %s/%s in task %s", *vm.Name, *vm.ID, *withLatestStatusTask.ID)
+		}
+	}
+
+	// Delete the VM
+	task, err := ctx.VMService.Delete(*vm.ID)
+	if err != nil {
+		return false, err
+	}
+
+	withLatestStatusTask, err := ctx.VMService.WaitTask(*task.ID, waitDuplicateVMTaskTimeout, waitDuplicateVMTaskInterval)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to wait for VM deletion task done in %s: key %s/%s, taskID %s", waitDuplicateVMTaskTimeout, *vm.Name, *vm.ID, *task.ID)
+	}
+
+	if *withLatestStatusTask.Status == models.TaskStatusFAILED {
+		return false, errors.Errorf("failed to delete VM %s/%s in task %s", *vm.Name, *vm.ID, *withLatestStatusTask.ID)
+	}
+
+	ctx.Logger.V(1).Info("Duplicate VM already deleted", "vmID", *vm.ID, "name", *vm.Name)
+
+	return true, nil
 }
