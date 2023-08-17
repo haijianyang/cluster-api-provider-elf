@@ -41,6 +41,40 @@ var vmOperationLock sync.Mutex
 var placementGroupOperationMap = make(map[string]time.Time)
 var placementGroupOperationLock sync.Mutex
 
+var lastVMGCTime = time.Now()
+var lastPlacementGroupGCTime = time.Now()
+var gcMinInterval = 30 * time.Minute
+
+func cleanupVMCache() {
+	if !time.Now().After(lastVMGCTime.Add(gcMinInterval)) {
+		return
+	}
+
+	for name, timestamp := range vmConcurrentMap {
+		if !time.Now().Before(timestamp.Add(creationTimeout)) {
+			delete(vmConcurrentMap, name)
+		}
+	}
+
+	for name, timestamp := range vmOperationMap {
+		if !time.Now().Before(timestamp.Add(vmSilenceTime)) {
+			delete(vmOperationMap, name)
+		}
+	}
+}
+
+func cleanupPlacementGroupCache() {
+	if !time.Now().After(lastPlacementGroupGCTime.Add(gcMinInterval)) {
+		return
+	}
+
+	for name, timestamp := range vmConcurrentMap {
+		if !time.Now().Before(timestamp.Add(placementGroupSilenceTime)) {
+			delete(vmConcurrentMap, name)
+		}
+	}
+}
+
 // acquireTicketForCreateVM returns whether virtual machine create operation
 // can be performed.
 func acquireTicketForCreateVM(vmName string, isControlPlaneVM bool) (bool, string) {
