@@ -16,7 +16,9 @@ limitations under the License.
 
 package collections
 
-import "time"
+import (
+	"time"
+)
 
 // TTLMap is Go built-in map with TTL.
 type TTLMap struct {
