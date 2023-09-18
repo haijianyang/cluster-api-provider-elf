@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	clientcluster "github.com/smartxworks/cloudtower-go-sdk/v2/client/cluster"
 	clientvmtemplate "github.com/smartxworks/cloudtower-go-sdk/v2/client/content_library_vm_template"
+	clientgpu "github.com/smartxworks/cloudtower-go-sdk/v2/client/gpu_device"
 	clienthost "github.com/smartxworks/cloudtower-go-sdk/v2/client/host"
 	clientlabel "github.com/smartxworks/cloudtower-go-sdk/v2/client/label"
 	clienttask "github.com/smartxworks/cloudtower-go-sdk/v2/client/task"
@@ -33,7 +34,6 @@ import (
 	clientvmplacementgroup "github.com/smartxworks/cloudtower-go-sdk/v2/client/vm_placement_group"
 	"github.com/smartxworks/cloudtower-go-sdk/v2/models"
 	"k8s.io/apimachinery/pkg/util/wait"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	infrav1 "github.com/smartxworks/cluster-api-provider-elf/api/v1beta1"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/config"
@@ -41,10 +41,8 @@ import (
 )
 
 type VMService interface {
-	Clone(elfCluster *infrav1.ElfCluster,
-		machine *clusterv1.Machine,
-		elfMachine *infrav1.ElfMachine,
-		bootstrapData, host string) (*models.WithTaskVM, error)
+	Clone(elfCluster *infrav1.ElfCluster, elfMachine *infrav1.ElfMachine, bootstrapData,
+		host string, machineGPUDevices []*models.GpuDevice) (*models.WithTaskVM, error)
 	UpdateVM(vm *models.VM, elfMachine *infrav1.ElfMachine) (*models.WithTaskVM, error)
 	Migrate(vmID, hostID string) (*models.WithTaskVM, error)
 	Delete(uuid string) (*models.Task, error)
@@ -70,6 +68,7 @@ type VMService interface {
 	GetVMPlacementGroup(name string) (*models.VMPlacementGroup, error)
 	AddVMsToPlacementGroup(placementGroup *models.VMPlacementGroup, vmIDs []string) (*models.Task, error)
 	DeleteVMPlacementGroupsByName(placementGroupName string) error
+	FindGPUDevices(hostIDs []string) ([]*models.GpuDevice, error)
 }
 
 type NewVMServiceFunc func(ctx goctx.Context, auth infrav1.Tower, logger logr.Logger) (VMService, error)
@@ -113,10 +112,8 @@ func (svr *TowerVMService) UpdateVM(vm *models.VM, elfMachine *infrav1.ElfMachin
 
 // Clone kicks off a clone operation on Elf to create a new virtual machine using VM template.
 func (svr *TowerVMService) Clone(
-	elfCluster *infrav1.ElfCluster,
-	machine *clusterv1.Machine,
-	elfMachine *infrav1.ElfMachine,
-	bootstrapData, host string) (*models.WithTaskVM, error) {
+	elfCluster *infrav1.ElfCluster, elfMachine *infrav1.ElfMachine, bootstrapData,
+	host string, machineGPUDevices []*models.GpuDevice) (*models.WithTaskVM, error) {
 	cluster, err := svr.GetCluster(elfCluster.Spec.Cluster)
 	if err != nil {
 		return nil, err
@@ -130,6 +127,20 @@ func (svr *TowerVMService) Clone(
 	vCPU := TowerVCPU(elfMachine.Spec.NumCPUs)
 	cpuCores := TowerCPUCores(*vCPU, elfMachine.Spec.NumCoresPerSocket)
 	cpuSockets := TowerCPUSockets(*vCPU, *cpuCores)
+
+	gpuDevices := make([]*models.VMGpuOperationParams, len(machineGPUDevices))
+	for i := 0; i < len(machineGPUDevices); i++ {
+		gpuDevices[i] = &models.VMGpuOperationParams{
+			GpuID:  machineGPUDevices[i].ID,
+			Amount: TowerInt32(1),
+		}
+	}
+
+	ha := TowerBool(elfMachine.Spec.HA)
+	// HA cannot be enabled on a virtual machine with GPU/vGPU devices.
+	if len(gpuDevices) > 0 {
+		ha = TowerBool(false)
+	}
 
 	var mountDisks []*models.MountNewCreateDisksParams
 	if elfMachine.Spec.DiskGiB > 0 {
@@ -233,8 +244,9 @@ func (svr *TowerVMService) Clone(
 		CPUCores:    cpuCores,
 		CPUSockets:  cpuSockets,
 		Memory:      TowerMemory(elfMachine.Spec.MemoryMiB),
+		GpuDevices:  gpuDevices,
 		Status:      models.NewVMStatus(models.VMStatusSTOPPED),
-		Ha:          TowerBool(elfMachine.Spec.HA),
+		Ha:          ha,
 		IsFullCopy:  TowerBool(isFullCopy),
 		TemplateID:  template.ID,
 		GuestOsType: models.NewVMGuestsOperationSystem(models.VMGuestsOperationSystem(elfMachine.Spec.OSType)),
@@ -820,4 +832,33 @@ func (svr *TowerVMService) DeleteVMPlacementGroupsByName(placementGroupName stri
 	}
 
 	return nil
+}
+
+func (svr *TowerVMService) FindGPUDevices(hostIDs []string) ([]*models.GpuDevice, error) {
+	if len(hostIDs) == 0 {
+		return nil, nil
+	}
+
+	getGpuDevicesParams := clientgpu.NewGetGpuDevicesParams()
+	getGpuDevicesParams.RequestBody = &models.GetGpuDevicesRequestBody{
+		Where: &models.GpuDeviceWhereInput{
+			UserUsage: models.NewGpuDeviceUsage(models.GpuDeviceUsagePASSTHROUGH),
+			Host: &models.HostWhereInput{
+				IDIn: hostIDs,
+			},
+			// A GPU device can be mounted by multiple powered-off virtual machines,
+			// but can only be used by one powered-on virtual machine.
+			// This where condition can be used to filter the GPU device that has been used by the powered on virtual machine.
+			VmsNone: &models.VMWhereInput{
+				Status: models.NewVMStatus(models.VMStatusRUNNING),
+			},
+		},
+	}
+
+	getGpuDevicesResp, err := svr.Session.GpuDevice.GetGpuDevices(getGpuDevicesParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return getGpuDevicesResp.Payload, nil
 }

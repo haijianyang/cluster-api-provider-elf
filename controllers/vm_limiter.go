@@ -138,3 +138,27 @@ func getKeyForVM(name string) string {
 func getKeyForVMDuplicate(name string) string {
 	return fmt.Sprintf("vm:duplicate:%s", name)
 }
+
+// acquireTicketForClusterOperation returns whether cluster operation
+// can be performed.
+func acquireTicketForClusterOperation(name string) bool {
+	vmOperationLock.Lock()
+	defer vmOperationLock.Unlock()
+
+	if _, found := vmTaskErrorCache.Get(getKeyForCluster(name)); found {
+		return false
+	}
+
+	vmTaskErrorCache.Set(getKeyForCluster(name), nil, cache.NoExpiration)
+
+	return true
+}
+
+// releaseTicketForClusterpOperation releases the cluster being operated.
+func releaseTicketForClusterpOperation(name string) {
+	vmTaskErrorCache.Delete(getKeyForCluster(name))
+}
+
+func getKeyForCluster(name string) string {
+	return fmt.Sprintf("cluster:%s", name)
+}
