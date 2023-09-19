@@ -474,8 +474,8 @@ func (r *ElfMachineReconciler) selectHostForVM(ctx *context.MachineContext) (ret
 		return pointer.String(""), nil, nil
 	}
 
-	if ok := acquireTicketForClusterOperation(ctx.Cluster.Name); ok {
-		defer releaseTicketForClusterpOperation(ctx.Cluster.Name)
+	if ok := acquireTicketForClusterOperation(ctx.ElfCluster.Spec.Cluster); ok {
+		defer releaseTicketForClusterpOperation(ctx.ElfCluster.Spec.Cluster)
 	} else {
 		return nil, nil, nil
 	}
@@ -504,9 +504,19 @@ func (r *ElfMachineReconciler) selectHostForVM(ctx *context.MachineContext) (ret
 		return nil, nil, err
 	}
 
+	freezedGPUIDs, err := getFreezeClusterGPUDevices(ctx, ctx.Client, ctx.ElfCluster.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Group GPU devices by host.
 	hostGPUDeviceMap := make(map[string][]*models.GpuDevice)
 	for i := 0; i < len(gpuDevices); i++ {
+		// Filter locked GPU devices
+		if freezedGPUIDs.Has(*gpuDevices[i].ID) {
+			continue
+		}
+
 		if gpus, ok := hostGPUDeviceMap[*gpuDevices[i].Host.ID]; !ok {
 			hostGPUDeviceMap[*gpuDevices[i].Host.ID] = []*models.GpuDevice{gpuDevices[i]}
 		} else {
@@ -518,9 +528,22 @@ func (r *ElfMachineReconciler) selectHostForVM(ctx *context.MachineContext) (ret
 	for _, host := range availableHosts {
 		if hostGPUDevices, ok := hostGPUDeviceMap[*host.ID]; ok {
 			selectedGPUDevices := selectGPUDevicesForVM(hostGPUDevices, ctx.ElfMachine.Spec.GPUDevices)
-			if len(selectedGPUDevices) > 0 {
-				return host.ID, selectedGPUDevices, nil
+			if len(selectedGPUDevices) == 0 {
+				continue
 			}
+
+			gpuDeviceIDs := make([]string, len(selectedGPUDevices))
+			for i := 0; i < len(selectedGPUDevices); i++ {
+				gpuDeviceIDs[i] = *selectedGPUDevices[i].ID
+			}
+
+			if err := freezeHostGPUDevices(ctx, ctx.Client, ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name, *host.ID, gpuDeviceIDs); err != nil {
+				return nil, nil, err
+			}
+
+			ctx.Logger.Info("Selected host and GPU devices for VM", "hostId", *host.ID, "gpuDeviceIds", gpuDeviceIDs)
+
+			return host.ID, selectedGPUDevices, nil
 		}
 	}
 
@@ -556,6 +579,74 @@ func selectGPUDevicesForVM(hostGPUDevices []*models.GpuDevice, requiredGPUDevice
 	}
 
 	return selectedGPUDevices
+}
+
+func (r *ElfMachineReconciler) reconcileVMGPUDevices(ctx *context.MachineContext, vm *models.VM) (bool, error) {
+	if *vm.Status != models.VMStatusSTOPPED || !ctx.ElfMachine.HasGPUDevice() {
+		return true, nil
+	}
+
+	message := conditions.GetMessage(ctx.ElfMachine, infrav1.VMProvisionedCondition)
+	if service.IsGPUAssignFailed(message) {
+		staleGPUs := make([]*models.VMGpuOperationParams, len(vm.GpuDevices))
+		for i := 0; i < len(vm.GpuDevices); i++ {
+			staleGPUs[i] = &models.VMGpuOperationParams{
+				GpuID:  vm.GpuDevices[i].ID,
+				Amount: service.TowerInt32(1),
+			}
+		}
+
+		task, err := ctx.VMService.RemoveGPUDevices(ctx.ElfMachine.Status.VMRef, staleGPUs)
+		if err != nil {
+			conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.PoweringOnFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+
+			return false, errors.Wrapf(err, "failed to trigger remove stale GPU devices for VM %s", ctx)
+		}
+
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.UpdatingReason, clusterv1.ConditionSeverityInfo, "")
+
+		ctx.ElfMachine.SetTask(*task.ID)
+
+		ctx.Logger.Info("Waiting for VM to be removed stale GPU devices", "vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef)
+
+		return false, nil
+	}
+
+	if len(vm.GpuDevices) == 0 {
+		hostID, gpuDevices, err := r.selectHostForVM(ctx)
+		if err != nil || hostID == nil {
+			return false, err
+		}
+
+		gpus := make([]*models.VMGpuOperationParams, len(gpuDevices))
+		for i := 0; i < len(gpuDevices); i++ {
+			gpus[i] = &models.VMGpuOperationParams{
+				GpuID:  gpuDevices[i].ID,
+				Amount: service.TowerInt32(1),
+			}
+		}
+
+		task, err := ctx.VMService.AddGPUDevices(ctx.ElfMachine.Status.VMRef, gpus)
+		if err != nil {
+			conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.PoweringOnFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+
+			if err := unfreezeHostGPUDevices(ctx, ctx.Client, ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name); err != nil {
+				ctx.Logger.Error(err, "failed to unfreeze GPU devices")
+			}
+
+			return false, errors.Wrapf(err, "failed to trigger add GPU devices for VM %s", ctx)
+		}
+
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.UpdatingReason, clusterv1.ConditionSeverityInfo, "")
+
+		ctx.ElfMachine.SetTask(*task.ID)
+
+		ctx.Logger.Info("Waiting for VM to be added GPU devices", "vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef)
+
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // reconcileVM makes sure that the VM is in the desired state by:
@@ -625,6 +716,12 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 		withTaskVM, err := ctx.VMService.Clone(ctx.ElfCluster, ctx.ElfMachine, bootstrapData, *hostID, gpuDevices)
 		if err != nil {
 			releaseTicketForCreateVM(ctx.ElfMachine.Name)
+
+			if ctx.ElfMachine.HasGPUDevice() {
+				if err := unfreezeHostGPUDevices(ctx, ctx.Client, ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name); err != nil {
+					ctx.Logger.Error(err, "failed to unfreeze GPU devices")
+				}
+			}
 
 			if service.IsVMDuplicate(err) {
 				vm, err := ctx.VMService.GetByName(ctx.ElfMachine.Name)
@@ -700,6 +797,10 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 
 	// Before the virtual machine is powered on, put the virtual machine into the specified placement group.
 	if ok, err := r.joinPlacementGroup(ctx, vm); err != nil || !ok {
+		return vm, false, err
+	}
+
+	if ok, err := r.reconcileVMGPUDevices(ctx, vm); err != nil || !ok {
 		return vm, false, err
 	}
 
@@ -952,6 +1053,9 @@ func (r *ElfMachineReconciler) reconcileVMTask(ctx *context.MachineContext, vm *
 	switch *task.Status {
 	case models.TaskStatusFAILED:
 		errorMessage := service.GetTowerString(task.ErrorMessage)
+		if service.IsGPUAssignFailed(errorMessage) {
+			errorMessage = service.ParseGPUAssignFailed(errorMessage)
+		}
 		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.TaskFailureReason, clusterv1.ConditionSeverityInfo, errorMessage)
 
 		if service.IsCloudInitConfigError(errorMessage) {
@@ -967,6 +1071,18 @@ func (r *ElfMachineReconciler) reconcileVMTask(ctx *context.MachineContext, vm *
 
 			if service.IsVMDuplicateError(errorMessage) {
 				setVMDuplicate(ctx.ElfMachine.Name)
+			}
+
+			if ctx.ElfMachine.HasGPUDevice() {
+				if err := unfreezeHostGPUDevices(ctx, ctx.Client, ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name); err != nil {
+					ctx.Logger.Error(err, "failed to unfreeze GPU devices")
+				}
+			}
+		case service.IsPowerOnVMTask(task):
+			if ctx.ElfMachine.HasGPUDevice() {
+				if err := unfreezeHostGPUDevices(ctx, ctx.Client, ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name); err != nil {
+					ctx.Logger.Error(err, "failed to unfreeze GPU devices")
+				}
 			}
 		case service.IsMemoryInsufficientError(errorMessage):
 			recordElfClusterMemoryInsufficient(ctx, true)
@@ -989,6 +1105,13 @@ func (r *ElfMachineReconciler) reconcileVMTask(ctx *context.MachineContext, vm *
 		if service.IsCloneVMTask(task) || service.IsPowerOnVMTask(task) {
 			releaseTicketForCreateVM(ctx.ElfMachine.Name)
 			recordElfClusterMemoryInsufficient(ctx, false)
+
+			if ctx.ElfMachine.HasGPUDevice() {
+				if err := unfreezeHostGPUDevices(ctx, ctx.Client, ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name); err != nil {
+					ctx.Logger.Error(err, "failed to unfreeze GPU devices")
+				}
+			}
+
 			if err := recordPlacementGroupPolicyNotSatisfied(ctx, false); err != nil {
 				return true, err
 			}

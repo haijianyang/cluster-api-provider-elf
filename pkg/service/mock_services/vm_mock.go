@@ -37,6 +37,21 @@ func (m *MockVMService) EXPECT() *MockVMServiceMockRecorder {
 	return m.recorder
 }
 
+// AddGPUDevices mocks base method.
+func (m *MockVMService) AddGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddGPUDevices", id, gpus)
+	ret0, _ := ret[0].(*models.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AddGPUDevices indicates an expected call of AddGPUDevices.
+func (mr *MockVMServiceMockRecorder) AddGPUDevices(id, gpus interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddGPUDevices", reflect.TypeOf((*MockVMService)(nil).AddGPUDevices), id, gpus)
+}
+
 // AddLabelsToVM mocks base method.
 func (m *MockVMService) AddLabelsToVM(vmID string, labels []string) (*models.Task, error) {
 	m.ctrl.T.Helper()
@@ -379,6 +394,21 @@ func (m *MockVMService) PowerOn(uuid string) (*models.Task, error) {
 func (mr *MockVMServiceMockRecorder) PowerOn(uuid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PowerOn", reflect.TypeOf((*MockVMService)(nil).PowerOn), uuid)
+}
+
+// RemoveGPUDevices mocks base method.
+func (m *MockVMService) RemoveGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveGPUDevices", id, gpus)
+	ret0, _ := ret[0].(*models.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveGPUDevices indicates an expected call of RemoveGPUDevices.
+func (mr *MockVMServiceMockRecorder) RemoveGPUDevices(id, gpus interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveGPUDevices", reflect.TypeOf((*MockVMService)(nil).RemoveGPUDevices), id, gpus)
 }
 
 // ShutDown mocks base method.

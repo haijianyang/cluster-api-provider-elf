@@ -21,6 +21,8 @@ import "time"
 var (
 	ProviderNameShort = "cape"
 
+	ProviderNamespace = ProviderNameShort + "-system"
+
 	// DefaultRequeueTimeout is the default time for how long to wait when
 	// requeueing a CAPE operation.
 	DefaultRequeueTimeout = 10 * time.Second
