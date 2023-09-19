@@ -49,6 +49,8 @@ type VMService interface {
 	PowerOff(uuid string) (*models.Task, error)
 	PowerOn(uuid string) (*models.Task, error)
 	ShutDown(uuid string) (*models.Task, error)
+	RemoveGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error)
+	AddGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error)
 	Get(id string) (*models.VM, error)
 	GetByName(name string) (*models.VM, error)
 	FindByIDs(ids []string) ([]*models.VM, error)
@@ -375,6 +377,48 @@ func (svr *TowerVMService) ShutDown(id string) (*models.Task, error) {
 	}
 
 	return &models.Task{ID: shutDownVMResp.Payload[0].TaskID}, nil
+}
+
+func (svr *TowerVMService) RemoveGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error) {
+	removeVMGpuDeviceParams := clientvm.NewRemoveVMGpuDeviceParams()
+	removeVMGpuDeviceParams.RequestBody = &models.VMRemoveGpuDeviceParams{
+		Data: gpus,
+		Where: &models.VMWhereInput{
+			OR: []*models.VMWhereInput{{LocalID: TowerString(id)}, {ID: TowerString(id)}},
+		},
+	}
+
+	temoveVMGPUDeviceResp, err := svr.Session.VM.RemoveVMGpuDevice(removeVMGpuDeviceParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(temoveVMGPUDeviceResp.Payload) == 0 {
+		return nil, errors.New(VMNotFound)
+	}
+
+	return &models.Task{ID: temoveVMGPUDeviceResp.Payload[0].TaskID}, nil
+}
+
+func (svr *TowerVMService) AddGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error) {
+	addVMGpuDeviceParams := clientvm.NewAddVMGpuDeviceParams()
+	addVMGpuDeviceParams.RequestBody = &models.VMAddGpuDeviceParams{
+		Data: gpus,
+		Where: &models.VMWhereInput{
+			OR: []*models.VMWhereInput{{LocalID: TowerString(id)}, {ID: TowerString(id)}},
+		},
+	}
+
+	addVMGpuDeviceResp, err := svr.Session.VM.AddVMGpuDevice(addVMGpuDeviceParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(addVMGpuDeviceResp.Payload) == 0 {
+		return nil, errors.New(VMNotFound)
+	}
+
+	return &models.Task{ID: addVMGpuDeviceResp.Payload[0].TaskID}, nil
 }
 
 // Get searches for a virtual machine.

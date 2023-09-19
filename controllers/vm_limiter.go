@@ -17,11 +17,17 @@ limitations under the License.
 package controllers
 
 import (
+	goctx "context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/patrickmn/go-cache"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/config"
 )
@@ -161,4 +167,147 @@ func releaseTicketForClusterpOperation(name string) {
 
 func getKeyForCluster(name string) string {
 	return fmt.Sprintf("cluster:%s", name)
+}
+
+const (
+	freezionGPUConfigMapName = "freezion-gpus"
+)
+
+type freezionHostGPU struct {
+	HostID       string    `json:"hostId"`
+	GPUDeviceIDs []string  `json:"gpuDeviceIds"`
+	FreezedAt    time.Time `json:"freezedAt"`
+}
+
+func freezeHostGPUDevices(ctx goctx.Context, c client.Client, clusterID, vmName, hostID string, gpuDeviceIDs []string) error {
+	vmOperationLock.Lock()
+	defer vmOperationLock.Unlock()
+
+	freezionGPUConfigMap := &corev1.ConfigMap{}
+	if err := c.Get(ctx, client.ObjectKey{
+		Namespace: config.ProviderNamespace,
+		Name:      freezionGPUConfigMapName,
+	}, freezionGPUConfigMap); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		freezionGPUConfigMap.BinaryData = make(map[string][]byte)
+	}
+
+	freezionClusterGPUMap := make(map[string]freezionHostGPU)
+	if _, ok := freezionGPUConfigMap.BinaryData[clusterID]; ok {
+		if err := json.Unmarshal(freezionGPUConfigMap.BinaryData[clusterID], &freezionClusterGPUMap); err != nil {
+			return err
+		}
+	}
+
+	freezionClusterGPUMap[vmName] = freezionHostGPU{
+		HostID:       hostID,
+		GPUDeviceIDs: gpuDeviceIDs,
+		FreezedAt:    time.Now(),
+	}
+
+	if bs, err := json.Marshal(freezionClusterGPUMap); err != nil {
+		return err
+	} else {
+		freezionGPUConfigMap.BinaryData[clusterID] = bs
+	}
+
+	if freezionGPUConfigMap.CreationTimestamp.IsZero() {
+		freezionGPUConfigMap.Namespace = config.ProviderNamespace
+		freezionGPUConfigMap.Name = freezionGPUConfigMapName
+
+		return c.Create(ctx, freezionGPUConfigMap)
+	}
+
+	return c.Patch(ctx, freezionGPUConfigMap, client.Merge)
+}
+
+func unfreezeHostGPUDevices(ctx goctx.Context, c client.Client, clusterID, vmName string) error {
+	vmOperationLock.Lock()
+	defer vmOperationLock.Unlock()
+
+	freezionGPUConfigMap := &corev1.ConfigMap{}
+	if err := c.Get(ctx, client.ObjectKey{
+		Namespace: config.ProviderNamespace,
+		Name:      freezionGPUConfigMapName,
+	}, freezionGPUConfigMap); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	if _, ok := freezionGPUConfigMap.BinaryData[clusterID]; !ok {
+		return nil
+	}
+
+	freezionClusterGPUMap := make(map[string]freezionHostGPU)
+	if _, ok := freezionGPUConfigMap.BinaryData[clusterID]; ok {
+		if err := json.Unmarshal(freezionGPUConfigMap.BinaryData[clusterID], &freezionClusterGPUMap); err != nil {
+			return err
+		}
+	}
+
+	delete(freezionClusterGPUMap, vmName)
+
+	if bs, err := json.Marshal(freezionClusterGPUMap); err != nil {
+		return err
+	} else {
+		freezionGPUConfigMap.BinaryData[clusterID] = bs
+	}
+
+	return c.Patch(ctx, freezionGPUConfigMap, client.Merge)
+}
+
+func getFreezeClusterGPUDevices(ctx goctx.Context, c client.Client, clusterID string) (sets.Set[string], error) {
+	vmOperationLock.Lock()
+	defer vmOperationLock.Unlock()
+
+	gpuIDs := sets.Set[string]{}
+
+	freezionGPUConfigMap := &corev1.ConfigMap{}
+	if err := c.Get(ctx, client.ObjectKey{
+		Namespace: config.ProviderNamespace,
+		Name:      freezionGPUConfigMapName,
+	}, freezionGPUConfigMap); err != nil {
+		if apierrors.IsNotFound(err) {
+			return gpuIDs, nil
+		}
+
+		return nil, err
+	}
+
+	freezionClusterGPUMap := make(map[string]freezionHostGPU)
+	if _, ok := freezionGPUConfigMap.BinaryData[clusterID]; ok {
+		if err := json.Unmarshal(freezionGPUConfigMap.BinaryData[clusterID], &freezionClusterGPUMap); err != nil {
+			return nil, err
+		}
+	}
+
+	hasStaleGPU := false
+	for vmName, freezionHostGPU := range freezionClusterGPUMap {
+		if time.Now().Before(freezionHostGPU.FreezedAt.Add(vmCreationTimeout)) {
+			gpuIDs.Insert(freezionHostGPU.GPUDeviceIDs...)
+		} else {
+			delete(freezionClusterGPUMap, vmName)
+			hasStaleGPU = true
+		}
+	}
+
+	if hasStaleGPU {
+		if bs, err := json.Marshal(freezionClusterGPUMap); err != nil {
+			return nil, err
+		} else {
+			freezionGPUConfigMap.BinaryData[clusterID] = bs
+		}
+
+		if err := c.Patch(ctx, freezionGPUConfigMap, client.Merge); err != nil {
+			return nil, err
+		}
+	}
+
+	return gpuIDs, nil
 }
