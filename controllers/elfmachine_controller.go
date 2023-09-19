@@ -460,6 +460,104 @@ func (r *ElfMachineReconciler) reconcileNormal(ctx *context.MachineContext) (rec
 	return reconcile.Result{}, nil
 }
 
+// selectHostForVM returns a host used to create and run the virtual machine.
+// Randomly select a host from the available hosts that meets the GPU requirements of the virtual machine.
+//
+// The return rethost:
+// 1. nil means there are not enough hosts.
+// 2. An empty string indicates that the host does not need to be specified.
+// 3. A non-empty string indicates that the specified host ID was returned.
+//
+// The return gpudevices: the GPU devices used to create the virtual machine.
+func (r *ElfMachineReconciler) selectHostForVM(ctx *context.MachineContext) (rethost *string, gpudevices []*models.GpuDevice, reterr error) {
+	if !ctx.ElfMachine.HasGPUDevice() {
+		return pointer.String(""), nil, nil
+	}
+
+	if ok := acquireTicketForClusterOperation(ctx.ElfCluster.Spec.Cluster); ok {
+		defer releaseTicketForClusterpOperation(ctx.ElfCluster.Spec.Cluster)
+	} else {
+		return nil, nil, nil
+	}
+
+	defer func() {
+		if rethost == nil {
+			conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForAvailableHostWithEnoughGPUsReason, clusterv1.ConditionSeverityInfo, "")
+
+			ctx.Logger.V(1).Info("No host with the required GPU devices for the virtual machine, so wait for enough available hosts")
+		}
+	}()
+
+	hosts, err := ctx.VMService.GetHostsByCluster(ctx.ElfCluster.Spec.Cluster)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	availableHosts := hosts.FilterAvailableHostsWithEnoughMemory(*service.TowerMemory(ctx.ElfMachine.Spec.MemoryMiB))
+	if len(availableHosts) == 0 {
+		return nil, nil, nil
+	}
+
+	// Get all available GPU devices for available hosts in the cluster.
+	gpuDevices, err := ctx.VMService.FindGPUDevices(availableHosts.IDs())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Group GPU devices by host.
+	hostGPUDeviceMap := make(map[string][]*models.GpuDevice)
+	for i := 0; i < len(gpuDevices); i++ {
+		if gpus, ok := hostGPUDeviceMap[*gpuDevices[i].Host.ID]; !ok {
+			hostGPUDeviceMap[*gpuDevices[i].Host.ID] = []*models.GpuDevice{gpuDevices[i]}
+		} else {
+			hostGPUDeviceMap[*gpuDevices[i].Host.ID] = append(gpus, gpuDevices[i])
+		}
+	}
+
+	// Choose a host that meets ElfMachine GPU needs.
+	for _, host := range availableHosts {
+		if hostGPUDevices, ok := hostGPUDeviceMap[*host.ID]; ok {
+			selectedGPUDevices := selectGPUDevicesForVM(hostGPUDevices, ctx.ElfMachine.Spec.GPUDevices)
+			if len(selectedGPUDevices) > 0 {
+				return host.ID, selectedGPUDevices, nil
+			}
+		}
+	}
+
+	return nil, nil, nil
+}
+
+// selectGPUDevicesForVM selects the GPU devices required by the virtual machine from the host's GPU devices.
+// Empty GPU devices indicates that the host's GPU devices cannot meet the GPU requirements of the virtual machine.
+func selectGPUDevicesForVM(hostGPUDevices []*models.GpuDevice, requiredGPUDevices []infrav1.GPUPassthroughDeviceSpec) []*models.GpuDevice {
+	// Group GPU devices by model.
+	modelGPUDeviceMap := make(map[string][]*models.GpuDevice)
+	for i := 0; i < len(hostGPUDevices); i++ {
+		if gpus, ok := modelGPUDeviceMap[*hostGPUDevices[i].Model]; !ok {
+			modelGPUDeviceMap[*hostGPUDevices[i].Model] = []*models.GpuDevice{hostGPUDevices[i]}
+		} else {
+			modelGPUDeviceMap[*hostGPUDevices[i].Model] = append(gpus, hostGPUDevices[i])
+		}
+	}
+
+	var selectedGPUDevices []*models.GpuDevice
+	for i := 0; i < len(requiredGPUDevices); i++ {
+		if gpus, ok := modelGPUDeviceMap[requiredGPUDevices[i].GPUModel]; !ok {
+			return nil
+		} else {
+			if len(gpus) < int(requiredGPUDevices[i].Count) {
+				return nil
+			}
+
+			selectedGPUDevices = append(selectedGPUDevices, gpus[:int(requiredGPUDevices[i].Count)]...)
+			// Remove selected GPU devices.
+			modelGPUDeviceMap[requiredGPUDevices[i].GPUModel] = gpus[int(requiredGPUDevices[i].Count):]
+		}
+	}
+
+	return selectedGPUDevices
+}
+
 // reconcileVM makes sure that the VM is in the desired state by:
 //  1. Creating the VM with the bootstrap data if it does not exist, then...
 //  2. Adding the VM to the placement group if needed, then...
@@ -469,6 +567,8 @@ func (r *ElfMachineReconciler) reconcileNormal(ctx *context.MachineContext) (rec
 // The return bool value:
 // 1. true means that the VM is running and joined a placement group (if needed).
 // 2. false and error is nil means the VM is not running or wait to join the placement group.
+//
+//nolint:gocyclo
 func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models.VM, bool, error) {
 	// If there is no vmRef then no VM exists, create one
 	if !ctx.ElfMachine.HasVM() {
@@ -506,14 +606,23 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 			return nil, false, nil
 		}
 
-		hostID, err := r.preCheckPlacementGroup(ctx)
-		if err != nil || hostID == nil {
-			return nil, false, err
+		var hostID *string
+		var gpuDevices []*models.GpuDevice
+		if machineutil.IsControlPlaneMachine(ctx.Machine) {
+			hostID, err = r.preCheckPlacementGroup(ctx)
+			if err != nil || hostID == nil {
+				return nil, false, err
+			}
+		} else {
+			hostID, gpuDevices, err = r.selectHostForVM(ctx)
+			if err != nil || hostID == nil {
+				return nil, false, err
+			}
 		}
 
 		ctx.Logger.Info("Create VM for ElfMachine")
 
-		withTaskVM, err := ctx.VMService.Clone(ctx.ElfCluster, ctx.Machine, ctx.ElfMachine, bootstrapData, *hostID)
+		withTaskVM, err := ctx.VMService.Clone(ctx.ElfCluster, ctx.ElfMachine, bootstrapData, *hostID, gpuDevices)
 		if err != nil {
 			releaseTicketForCreateVM(ctx.ElfMachine.Name)
 
