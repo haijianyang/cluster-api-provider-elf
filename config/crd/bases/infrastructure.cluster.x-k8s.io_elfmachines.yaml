@@ -316,6 +316,17 @@ spec:
                   during the reconciliation of Machines can be added as events to
                   the Machine object and/or logged in the controller's output."
                 type: string
+              gpuDevices:
+                description: GPUDevices returns the GPU devices status for each of
+                  the machine's configured GPU devices.
+                items:
+                  description: GPUStatus provides information about one of a VM's
+                    GPU device.
+                  properties:
+                    gpuId:
+                      type: string
+                  type: object
+                type: array
               hostServerName:
                 description: HostServerName is the name of host server where the virtual
                   machine runs on. This value is set automatically at runtime and

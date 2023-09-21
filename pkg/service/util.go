@@ -189,6 +189,10 @@ func IsPowerOnVMTask(task *models.Task) bool {
 	return strings.Contains(GetTowerString(task.Description), "Start VM")
 }
 
+func IsUpdateVMTask(task *models.Task) bool {
+	return strings.Contains(GetTowerString(task.Description), "Edit VM")
+}
+
 func IsVMMigrationTask(task *models.Task) bool {
 	return strings.Contains(GetTowerString(task.Description), "performing a live migration")
 }

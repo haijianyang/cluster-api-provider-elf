@@ -171,6 +171,11 @@ type VGPUDeviceSpec struct {
 	Count int32 `json:"count,omitempty"`
 }
 
+// GPUStatus provides information about one of a VM's GPU device.
+type GPUStatus struct {
+	GPUID string `json:"gpuId,omitempty"`
+}
+
 //+kubebuilder:object:generate=false
 
 // PatchStringValue is for patching resources.

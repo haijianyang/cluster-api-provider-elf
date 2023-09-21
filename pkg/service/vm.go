@@ -49,6 +49,8 @@ type VMService interface {
 	PowerOff(uuid string) (*models.Task, error)
 	PowerOn(uuid string) (*models.Task, error)
 	ShutDown(uuid string) (*models.Task, error)
+	RemoveGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error)
+	AddGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error)
 	Get(id string) (*models.VM, error)
 	GetByName(name string) (*models.VM, error)
 	FindByIDs(ids []string) ([]*models.VM, error)
@@ -69,6 +71,7 @@ type VMService interface {
 	AddVMsToPlacementGroup(placementGroup *models.VMPlacementGroup, vmIDs []string) (*models.Task, error)
 	DeleteVMPlacementGroupsByName(placementGroupName string) error
 	FindGPUDevices(hostIDs []string) ([]*models.GpuDevice, error)
+	FindGPUDevicesByIDs(gpuIDs []string) ([]*models.GpuDevice, error)
 }
 
 type NewVMServiceFunc func(ctx goctx.Context, auth infrav1.Tower, logger logr.Logger) (VMService, error)
@@ -375,6 +378,48 @@ func (svr *TowerVMService) ShutDown(id string) (*models.Task, error) {
 	}
 
 	return &models.Task{ID: shutDownVMResp.Payload[0].TaskID}, nil
+}
+
+func (svr *TowerVMService) RemoveGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error) {
+	removeVMGpuDeviceParams := clientvm.NewRemoveVMGpuDeviceParams()
+	removeVMGpuDeviceParams.RequestBody = &models.VMRemoveGpuDeviceParams{
+		Data: gpus,
+		Where: &models.VMWhereInput{
+			OR: []*models.VMWhereInput{{LocalID: TowerString(id)}, {ID: TowerString(id)}},
+		},
+	}
+
+	temoveVMGPUDeviceResp, err := svr.Session.VM.RemoveVMGpuDevice(removeVMGpuDeviceParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(temoveVMGPUDeviceResp.Payload) == 0 {
+		return nil, errors.New(VMNotFound)
+	}
+
+	return &models.Task{ID: temoveVMGPUDeviceResp.Payload[0].TaskID}, nil
+}
+
+func (svr *TowerVMService) AddGPUDevices(id string, gpus []*models.VMGpuOperationParams) (*models.Task, error) {
+	addVMGpuDeviceParams := clientvm.NewAddVMGpuDeviceParams()
+	addVMGpuDeviceParams.RequestBody = &models.VMAddGpuDeviceParams{
+		Data: gpus,
+		Where: &models.VMWhereInput{
+			OR: []*models.VMWhereInput{{LocalID: TowerString(id)}, {ID: TowerString(id)}},
+		},
+	}
+
+	addVMGpuDeviceResp, err := svr.Session.VM.AddVMGpuDevice(addVMGpuDeviceParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(addVMGpuDeviceResp.Payload) == 0 {
+		return nil, errors.New(VMNotFound)
+	}
+
+	return &models.Task{ID: addVMGpuDeviceResp.Payload[0].TaskID}, nil
 }
 
 // Get searches for a virtual machine.
@@ -846,12 +891,35 @@ func (svr *TowerVMService) FindGPUDevices(hostIDs []string) ([]*models.GpuDevice
 			Host: &models.HostWhereInput{
 				IDIn: hostIDs,
 			},
-			// A GPU device can be mounted by multiple powered-off virtual machines,
-			// but can only be used by one powered-on virtual machine.
-			// This where condition can be used to filter the GPU device that has been used by the powered on virtual machine.
-			VmsNone: &models.VMWhereInput{
-				Status: models.NewVMStatus(models.VMStatusRUNNING),
-			},
+		},
+	}
+
+	getGpuDevicesResp, err := svr.Session.GpuDevice.GetGpuDevices(getGpuDevicesParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter already used GPUs.
+	var gpuDevices []*models.GpuDevice
+	for i := 0; i < len(getGpuDevicesResp.Payload); i++ {
+		if len(getGpuDevicesResp.Payload[i].Vms) == 0 {
+			gpuDevices = append(gpuDevices, getGpuDevicesResp.Payload[i])
+		}
+	}
+
+	return gpuDevices, nil
+}
+
+func (svr *TowerVMService) FindGPUDevicesByIDs(gpuIDs []string) ([]*models.GpuDevice, error) {
+	if len(gpuIDs) == 0 {
+		return nil, nil
+	}
+
+	getGpuDevicesParams := clientgpu.NewGetGpuDevicesParams()
+	getGpuDevicesParams.RequestBody = &models.GetGpuDevicesRequestBody{
+		Where: &models.GpuDeviceWhereInput{
+			UserUsage: models.NewGpuDeviceUsage(models.GpuDeviceUsagePASSTHROUGH),
+			IDIn:      gpuIDs,
 		},
 	}
 

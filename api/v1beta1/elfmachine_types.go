@@ -114,6 +114,11 @@ type ElfMachineStatus struct {
 	// +optional
 	Network []NetworkStatus `json:"network,omitempty"`
 
+	// GPUDevices returns the GPU devices status for each of the machine's configured
+	// GPU devices.
+	// +optional
+	GPUDevices []GPUStatus `json:"gpuDevices,omitempty"`
+
 	// FailureReason will be set in the event that there is a terminal problem
 	// reconciling the Machine and will contain a succinct value suitable
 	// for machine interpretation.
