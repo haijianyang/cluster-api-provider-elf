@@ -259,7 +259,7 @@ func (r *ElfMachineReconciler) addVMGPUDevices(ctx *context.MachineContext, vm *
 
 	task, err := ctx.VMService.AddGPUDevices(ctx.ElfMachine.Status.VMRef, gpus)
 	if err != nil {
-		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.PoweringOnFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.AddingGPUFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
 
 		unlockVMGPUDevices(ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name)
 
@@ -287,7 +287,7 @@ func (r *ElfMachineReconciler) removeVMGPUDevices(ctx *context.MachineContext, v
 
 	task, err := ctx.VMService.RemoveGPUDevices(ctx.ElfMachine.Status.VMRef, staleGPUs)
 	if err != nil {
-		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.PoweringOnFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.RemovingGPUFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
 
 		return errors.Wrapf(err, "failed to trigger remove stale GPU devices for VM %s", ctx)
 	}

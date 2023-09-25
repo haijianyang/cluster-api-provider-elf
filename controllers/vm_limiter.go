@@ -194,9 +194,12 @@ func getLockedVMGPUDevices(clusterID, vmName string) *lockedVMGPUs {
 	defer gpuLock.Unlock()
 
 	lockedClusterGPUs := getLockedClusterGPUs(clusterID)
-	vmGPUs, ok := lockedClusterGPUs[vmName]
-	if ok {
-		return &vmGPUs
+	if vmGPUs, ok := lockedClusterGPUs[vmName]; ok {
+		if time.Now().Before(vmGPUs.LockedAt.Add(gpuLockTimeout)) {
+			return &vmGPUs
+		}
+
+		delete(lockedClusterGPUs, vmName)
 	}
 
 	return nil
