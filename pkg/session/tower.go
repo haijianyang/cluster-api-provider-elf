@@ -117,6 +117,7 @@ func createTowerClient(tlsOpts httptransport.TLSClientOptions, clientConfig towe
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("*resp.Payload.Data.Token", *resp.Payload.Data.Token)
 	rt.DefaultAuthentication = httptransport.APIKeyAuth("Authorization", "header", *resp.Payload.Data.Token)
 	return client, nil
 }

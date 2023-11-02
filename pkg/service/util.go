@@ -222,3 +222,36 @@ func FilterOutGPUsCanNotBeUsedForVM(gpuDevices []*models.GpuDevice, vm string) [
 
 	return gpus
 }
+
+func ConvertVMGpuInfosToGPUDeviceInfos(vmGPUInfos []*models.VMGpuInfo) GPUDeviceInfos {
+	gpuDeviceInfos := NewGPUDeviceInfos()
+	for i := 0; i < len(vmGPUInfos); i++ {
+		gpuDevices := vmGPUInfos[i].GpuDevices
+		for j := 0; j < len(gpuDevices); j++ {
+			gpuDeviceVM := GPUDeviceVM{
+				ID:             *vmGPUInfos[i].ID,
+				Name:           *vmGPUInfos[i].Name,
+				AllocatedCount: *gpuDevices[j].VgpuInstanceOnVMNum,
+			}
+
+			if gpuDeviceInfos.Contains(*gpuDevices[j].ID) {
+				gpuDeviceInfo := gpuDeviceInfos.Get(*gpuDevices[j].ID)
+				gpuDeviceInfo.VMs = append(gpuDeviceInfo.VMs, gpuDeviceVM)
+				gpuDeviceInfo.AllocatedCount += gpuDeviceVM.AllocatedCount
+				gpuDeviceInfos.Insert(gpuDeviceInfo)
+			} else {
+				gpuDeviceInfos.Insert(&GPUDeviceInfo{
+					ID:             *gpuDevices[j].ID,
+					HostID:         *gpuDevices[j].Host.ID,
+					Model:          *gpuDevices[j].Model,
+					VGPUTypeName:   *gpuDevices[j].UserVgpuTypeName,
+					AllocatedCount: gpuDeviceVM.AllocatedCount,
+					AvailableCount: *gpuDevices[j].AvailableVgpusNum,
+					VMs:            []GPUDeviceVM{gpuDeviceVM},
+				})
+			}
+		}
+	}
+
+	return gpuDeviceInfos
+}
