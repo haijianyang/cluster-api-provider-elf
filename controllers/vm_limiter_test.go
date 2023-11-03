@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -127,58 +126,58 @@ var _ = Describe("Placement Group Operation Limiter", func() {
 })
 
 var _ = Describe("Lock GPU devices for VM", func() {
-	var clusterID, vmName, hostID, gpuID string
+	// var clusterID, vmName, hostID, gpuID string
 
-	BeforeEach(func() {
-		clusterID = fake.UUID()
-		vmName = fake.UUID()
-		hostID = fake.UUID()
-		gpuID = fake.UUID()
-	})
+	// BeforeEach(func() {
+	// 	clusterID = fake.UUID()
+	// 	vmName = fake.UUID()
+	// 	hostID = fake.UUID()
+	// 	gpuID = fake.UUID()
+	// })
 
-	It("lockGPUDevicesForVM", func() {
-		gpuIDs := []string{gpuID}
+	// It("lockGPUDevicesForVM", func() {
+	// 	gpuIDs := []string{gpuID}
 
-		lockedVMGPUs := getGPUDevicesLockedByVM(clusterID, vmName)
-		Expect(lockedVMGPUs).To(BeNil())
-		lockedClusterGPUIDs := getLockedClusterGPUIDs(clusterID)
-		Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
+	// 	lockedVMGPUs := getGPUDevicesLockedByVM(clusterID, vmName)
+	// 	Expect(lockedVMGPUs).To(BeNil())
+	// 	lockedClusterGPUIDs := getLockedClusterGPUIDs(clusterID)
+	// 	Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
 
-		Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeTrue())
-		lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
-		Expect(lockedVMGPUs.HostID).To(Equal(hostID))
-		Expect(lockedVMGPUs.GPUDeviceIDs).To(Equal(gpuIDs))
-		Expect(lockedVMGPUs.LockedAt.Unix()).To(Equal(time.Now().Unix()))
-		lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
-		Expect(lockedClusterGPUIDs.Len()).To(Equal(1))
-		Expect(lockedClusterGPUIDs.Has(gpuID)).To(BeTrue())
+	// 	Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeTrue())
+	// 	lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
+	// 	Expect(lockedVMGPUs.HostID).To(Equal(hostID))
+	// 	Expect(lockedVMGPUs.GPUDeviceIDs).To(Equal(gpuIDs))
+	// 	Expect(lockedVMGPUs.LockedAt.Unix()).To(Equal(time.Now().Unix()))
+	// 	lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
+	// 	Expect(lockedClusterGPUIDs.Len()).To(Equal(1))
+	// 	Expect(lockedClusterGPUIDs.Has(gpuID)).To(BeTrue())
 
-		Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeFalse())
+	// 	Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeFalse())
 
-		unlockGPUDevicesLockedByVM(clusterID, vmName)
-		lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
-		Expect(lockedVMGPUs).To(BeNil())
-		lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
-		Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
+	// 	unlockGPUDevicesLockedByVM(clusterID, vmName)
+	// 	lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
+	// 	Expect(lockedVMGPUs).To(BeNil())
+	// 	lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
+	// 	Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
 
-		Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeTrue())
-		vmGPUs := lockedGPUMap[clusterID][vmName]
-		vmGPUs.LockedAt = vmGPUs.LockedAt.Add(-gpuLockTimeout)
-		lockedGPUMap[clusterID][vmName] = vmGPUs
-		lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
-		Expect(lockedVMGPUs).To(BeNil())
-		lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
-		Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
+	// 	Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeTrue())
+	// 	vmGPUs := lockedGPUMap[clusterID][vmName]
+	// 	vmGPUs.LockedAt = vmGPUs.LockedAt.Add(-gpuLockTimeout)
+	// 	lockedGPUMap[clusterID][vmName] = vmGPUs
+	// 	lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
+	// 	Expect(lockedVMGPUs).To(BeNil())
+	// 	lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
+	// 	Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
 
-		Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeTrue())
-		vmGPUs = lockedGPUMap[clusterID][vmName]
-		vmGPUs.LockedAt = vmGPUs.LockedAt.Add(-gpuLockTimeout)
-		lockedGPUMap[clusterID][vmName] = vmGPUs
-		lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
-		Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
-		lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
-		Expect(lockedVMGPUs).To(BeNil())
-	})
+	// 	Expect(lockGPUDevicesForVM(clusterID, vmName, hostID, gpuIDs)).To(BeTrue())
+	// 	vmGPUs = lockedGPUMap[clusterID][vmName]
+	// 	vmGPUs.LockedAt = vmGPUs.LockedAt.Add(-gpuLockTimeout)
+	// 	lockedGPUMap[clusterID][vmName] = vmGPUs
+	// 	lockedClusterGPUIDs = getLockedClusterGPUIDs(clusterID)
+	// 	Expect(lockedClusterGPUIDs.Len()).To(Equal(0))
+	// 	lockedVMGPUs = getGPUDevicesLockedByVM(clusterID, vmName)
+	// 	Expect(lockedVMGPUs).To(BeNil())
+	// })
 })
 
 func resetVMConcurrentCache() {

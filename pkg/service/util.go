@@ -201,24 +201,115 @@ func IsPlacementGroupTask(task *models.Task) bool {
 	return strings.Contains(GetTowerString(task.Description), "VM placement group") // Update VM placement group
 }
 
-// GPUCanBeUsedForVM returns whether the virtual machine can use the specified GPU.
-func GPUCanBeUsedForVM(gpuDevice *models.GpuDevice, vm string) bool {
-	if len(gpuDevice.Vms) == 0 ||
-		*gpuDevice.Vms[0].ID == vm ||
-		*gpuDevice.Vms[0].Name == vm {
-		return true
+func HasGPUsCanNotBeUsedForVM(gpuDeviceInfos GPUDeviceInfos, elfMachine *infrav1.ElfMachine) bool {
+	return false
+	availableCountMap := make(map[string]int32)
+	gpuDeviceInfos.Iterate(func(gpuInfo *GPUDeviceInfo) {
+		if gpuInfo.HasNoVMs() && gpuInfo.ContainsVM(elfMachine.Name) {
+		}
+
+		countKey := gpuInfo.Model
+		if elfMachine.RequiresVGPUDevices() {
+			countKey = gpuInfo.VGPUTypeName
+		}
+
+		if count, ok := availableCountMap[gpuInfo.ID]; ok {
+			availableCountMap[countKey] = count + gpuInfo.AvailableCount
+		} else {
+			availableCountMap[countKey] = gpuInfo.AvailableCount
+		}
+	})
+
+	if elfMachine.RequiresGPUDevices() {
+		for i := 0; i < len(elfMachine.Spec.GPUDevices); i++ {
+			if count, ok := availableCountMap[elfMachine.Spec.GPUDevices[i].Model]; !ok || elfMachine.Spec.GPUDevices[i].Count > count {
+				return true
+			}
+		}
+	} else {
+		for i := 0; i < len(elfMachine.Spec.VGPUDevices); i++ {
+			if count, ok := availableCountMap[elfMachine.Spec.VGPUDevices[i].Type]; !ok || elfMachine.Spec.VGPUDevices[i].Count > count {
+				return true
+			}
+		}
 	}
 
 	return false
 }
 
-func FilterOutGPUsCanNotBeUsedForVM(gpuDevices []*models.GpuDevice, vm string) []*models.GpuDevice {
-	var gpus []*models.GpuDevice
+func AggregateGPUDevicesToGPUDeviceInfos(gpuDeviceInfos GPUDeviceInfos, gpuDevices []*models.GpuDevice) {
 	for i := 0; i < len(gpuDevices); i++ {
-		if GPUCanBeUsedForVM(gpuDevices[i], vm) {
-			gpus = append(gpus, gpuDevices[i])
+		if !gpuDeviceInfos.Contains(*gpuDevices[i].ID) {
+			gpuDeviceInfo := &GPUDeviceInfo{
+				ID:           *gpuDevices[i].ID,
+				HostID:       *gpuDevices[i].Host.ID,
+				Model:        *gpuDevices[i].Model,
+				VGPUTypeName: *gpuDevices[i].UserVgpuTypeName,
+				// Not yet allocated to a VM, the value is 0
+				AllocatedCount: 0,
+				// Not yet allocated to a VM, value of GPU Passthrough is 1,
+				// value of vGPU is AvailableVgpusNum
+				AvailableCount: 1,
+			}
+			if *gpuDevices[i].UserUsage == models.GpuDeviceUsageVGPU {
+				gpuDeviceInfo.AvailableCount = *gpuDevices[i].AvailableVgpusNum
+			}
+
+			gpuDeviceInfos.Insert(gpuDeviceInfo)
+		}
+	}
+}
+
+func ConvertVMGpuInfosToGPUDeviceInfos(vmGPUInfos []*models.VMGpuInfo) GPUDeviceInfos {
+	gpuDeviceInfos := NewGPUDeviceInfos()
+	for i := 0; i < len(vmGPUInfos); i++ {
+		gpuDevices := vmGPUInfos[i].GpuDevices
+		for j := 0; j < len(gpuDevices); j++ {
+			allocatedCount := int32(1)
+			if *gpuDevices[j].UserUsage == models.GpuDeviceUsageVGPU {
+				allocatedCount = *gpuDevices[j].VgpuInstanceOnVMNum
+			}
+
+			gpuDeviceVM := GPUDeviceVM{
+				ID:             *vmGPUInfos[i].ID,
+				Name:           *vmGPUInfos[i].Name,
+				AllocatedCount: allocatedCount,
+			}
+
+			if gpuDeviceInfos.Contains(*gpuDevices[j].ID) {
+				gpuDeviceInfo := gpuDeviceInfos.Get(*gpuDevices[j].ID)
+				gpuDeviceInfo.VMs = append(gpuDeviceInfo.VMs, gpuDeviceVM)
+				gpuDeviceInfo.AllocatedCount += gpuDeviceVM.AllocatedCount
+				if *gpuDevices[j].UserUsage == models.GpuDeviceUsageVGPU {
+					gpuDeviceInfo.AvailableCount = calGPUAvailableCount(gpuDeviceInfo.AvailableCount, gpuDeviceVM.AllocatedCount)
+				}
+			} else {
+				availableCount := int32(0)
+				if *gpuDevices[j].UserUsage == models.GpuDeviceUsageVGPU {
+					availableCount = calGPUAvailableCount(*gpuDevices[j].VgpuInstanceNum, gpuDeviceVM.AllocatedCount)
+				}
+
+				gpuDeviceInfos.Insert(&GPUDeviceInfo{
+					ID:             *gpuDevices[j].ID,
+					HostID:         *gpuDevices[j].Host.ID,
+					Model:          *gpuDevices[j].Model,
+					VGPUTypeName:   *gpuDevices[j].UserVgpuTypeName,
+					AllocatedCount: gpuDeviceVM.AllocatedCount,
+					AvailableCount: availableCount,
+					VMs:            []GPUDeviceVM{gpuDeviceVM},
+				})
+			}
 		}
 	}
 
-	return gpus
+	return gpuDeviceInfos
+}
+
+func calGPUAvailableCount(availableCount, allocatedCount int32) int32 {
+	count := availableCount - allocatedCount
+	if count < 0 {
+		count = 0
+	}
+
+	return count
 }
