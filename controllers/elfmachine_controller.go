@@ -1187,24 +1187,26 @@ func (r *ElfMachineReconciler) getBootstrapData(ctx *context.MachineContext) (st
 }
 
 func (r *ElfMachineReconciler) reconcileLabels(ctx *context.MachineContext, vm *models.VM) (bool, error) {
+	baseErrMessage := "failed to upsert label"
+
 	creatorLabel, err := ctx.VMService.UpsertLabel(towerresources.GetVMLabelManaged(), "true")
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelManaged())
+		return false, errors.Wrapf(err, " "+towerresources.GetVMLabelManaged())
 	}
 	namespaceLabel, err := ctx.VMService.UpsertLabel(towerresources.GetVMLabelNamespace(), ctx.ElfMachine.Namespace)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelNamespace())
+		return false, errors.Wrapf(err, fmt.Sprintf("%s %s", baseErrMessage, towerresources.GetVMLabelNamespace()))
 	}
 	clusterNameLabel, err := ctx.VMService.UpsertLabel(towerresources.GetVMLabelClusterName(), ctx.ElfCluster.Name)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelClusterName())
+		return false, errors.Wrapf(err, fmt.Sprintf("%s %s", baseErrMessage, towerresources.GetVMLabelClusterName()))
 	}
 
 	var vipLabel *models.Label
 	if machineutil.IsControlPlaneMachine(ctx.ElfMachine) {
 		vipLabel, err = ctx.VMService.UpsertLabel(towerresources.GetVMLabelVIP(), ctx.ElfCluster.Spec.ControlPlaneEndpoint.Host)
 		if err != nil {
-			return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelVIP())
+			return false, errors.Wrapf(err, fmt.Sprintf("%s %s", baseErrMessage, towerresources.GetVMLabelVIP()))
 		}
 	}
 

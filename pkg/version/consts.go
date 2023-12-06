@@ -26,9 +26,12 @@ const (
 	// CAPEVersion1_3_0 defines version v1.3.0.
 	CAPEVersion1_3_0 = "v1.3.0"
 
+	// CAPEVersion1_4_0 defines version v1.4.0.
+	CAPEVersion1_4_0 = "v1.4.0"
+
 	// CAPEVersionLatest defines version latest.
 	CAPEVersionLatest = "latest"
 
 	// CAPEVersionDefault defines current CAPE version.
-	CAPEVersionDefault = CAPEVersion1_3_0
+	CAPEVersionDefault = CAPEVersion1_4_0
 )
