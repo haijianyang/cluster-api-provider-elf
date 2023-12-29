@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apitypes "k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	capiutil "sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -83,6 +84,10 @@ func AddClusterControllerToManager(ctx *context.ControllerManagerContext, mgr ct
 		Watches(
 			&clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(capiutil.ClusterToInfrastructureMapFunc(ctx, clusterControlledTypeGVK, mgr.GetClient(), &infrav1.ElfCluster{})),
+		).
+		Watches(
+			&infrav1.ElfMachineTemplate{},
+			handler.EnqueueRequestsFromMapFunc(reconciler.elfMachineTemplateToCluster),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), ctx.WatchFilterValue)).
 		WithOptions(options).
@@ -279,7 +284,7 @@ func (r *ElfClusterReconciler) reconcileDeleteLabel(ctx *context.ClusterContext,
 	return nil
 }
 
-func (r *ElfClusterReconciler) reconcileNormal(ctx *context.ClusterContext) (reconcile.Result, error) { //nolint:unparam
+func (r *ElfClusterReconciler) reconcileNormal(ctx *context.ClusterContext) (reconcile.Result, error) {
 	ctx.Logger.Info("Reconciling ElfCluster")
 
 	// If the ElfCluster doesn't have our finalizer, add it.
@@ -299,8 +304,12 @@ func (r *ElfClusterReconciler) reconcileNormal(ctx *context.ClusterContext) (rec
 	}
 
 	// Wait until the API server is online and accessible.
-	if !r.isAPIServerOnline(ctx) {
-		return reconcile.Result{}, nil
+	// if !r.isAPIServerOnline(ctx) {
+	// 	return reconcile.Result{}, nil
+	// }
+
+	if result, err := r.reconcileMachineResources(ctx); err != nil || !result.IsZero() {
+		return result, err
 	}
 
 	return reconcile.Result{}, nil
@@ -348,4 +357,23 @@ func (r *ElfClusterReconciler) isAPIServerOnline(ctx *context.ClusterContext) bo
 	}
 
 	return false
+}
+
+func (r *ElfClusterReconciler) elfMachineTemplateToCluster(ctx goctx.Context, o client.Object) []ctrl.Request {
+	elfMachineTemplate, ok := o.(*infrav1.ElfMachineTemplate)
+	if !ok {
+		panic(fmt.Sprintf("Expected a ElfMachineTemplate but got a %T", o))
+	}
+
+	cluster, err := capiutil.GetOwnerCluster(ctx, r.Client, elfMachineTemplate.ObjectMeta)
+	if err != nil || cluster == nil {
+		return nil
+	}
+
+	return []ctrl.Request{{
+		NamespacedName: apitypes.NamespacedName{
+			Namespace: cluster.Namespace,
+			Name:      cluster.Name,
+		},
+	}}
 }

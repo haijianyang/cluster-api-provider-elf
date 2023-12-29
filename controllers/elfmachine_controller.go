@@ -211,6 +211,7 @@ func (r *ElfMachineReconciler) Reconcile(ctx goctx.Context, req ctrl.Request) (_
 		conditions.SetSummary(machineContext.ElfMachine,
 			conditions.WithConditions(
 				infrav1.VMProvisionedCondition,
+				infrav1.ResourceHotUpdatedCondition,
 				infrav1.TowerAvailableCondition,
 			),
 		)
@@ -643,6 +644,10 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 	}
 
 	if ok, err := r.reconcileVMStatus(ctx, vm); err != nil || !ok {
+		return vm, false, err
+	}
+
+	if ok, err := r.reconcileVMResources(ctx, vm); err != nil || !ok {
 		return vm, false, err
 	}
 

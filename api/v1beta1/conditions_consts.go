@@ -117,6 +117,28 @@ const (
 	// WaitingForAvailableHostWithEnoughGPUsReason (Severity=Info) documents an ElfMachine
 	// waiting for an available host with enough GPUs to create VM.
 	WaitingForAvailableHostWithEnoughGPUsReason = "WaitingForAvailableHostWithEnoughGPUs"
+
+	// ResourceHotUpdatedCondition documents the status of the hot updating resources of a VM.
+	ResourceHotUpdatedCondition = "ResourceHotUpdated"
+
+	// WaitingForResourceHotUpdateReason (Severity=Info) documents an ElfMachine waiting for updating resources.
+	WaitingForResourceHotUpdateReason = "WaitingForResourceHotUpdate"
+
+	// UpdatingResourceReason documents (Severity=Info) ElfMachine currently executing the update resources operation.
+	UpdatingResourceReason = "UpdatingResource"
+
+	// UpdatingResourceFailedReason (Severity=Warning) documents an ElfMachine controller detecting
+	// an error while updating resources; those kind of errors are usually transient and failed updating
+	// are automatically re-tried by the controller.
+	UpdatingResourceFailedReason = "UpdatingResourceFailed"
+
+	// RestartingKubeletReason documents (Severity=Info) ElfMachine currently executing the restart kubelet operation.
+	RestartingKubeletReason = "RestartingKubelet"
+
+	// RestartingKubeletFailedReason (Severity=Warning) documents an ElfMachine controller detecting
+	// an error while restarting kubelet; those kind of errors are usually transient and failed restarting
+	// are automatically re-tried by the controller.
+	RestartingKubeletFailedReason = "RestartingKubeletFailed"
 )
 
 // Conditions and Reasons related to make connections to a Tower. Can currently be used by ElfCluster and ElfMachine
