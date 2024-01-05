@@ -174,6 +174,22 @@ func GetTowerInt64(ptr *int64) int64 {
 	return *ptr
 }
 
+func IsVMResourcesUpToDate(elfMachine *infrav1.ElfMachine, vm *models.VM) bool {
+	vCPU := TowerVCPU(elfMachine.Spec.NumCPUs)
+	cpuCores := TowerCPUCores(*vCPU, elfMachine.Spec.NumCoresPerSocket)
+	cpuSockets := TowerCPUSockets(*vCPU, *cpuCores)
+	memory := TowerMemory(elfMachine.Spec.MemoryMiB)
+
+	if *vCPU > *vm.Vcpu ||
+		*cpuCores > *vm.CPU.Cores ||
+		*cpuSockets > *vm.CPU.Sockets ||
+		*memory > *vm.Memory {
+		return false
+	}
+
+	return true
+}
+
 func GetTowerTaskStatus(ptr *models.TaskStatus) string {
 	if ptr == nil {
 		return ""
