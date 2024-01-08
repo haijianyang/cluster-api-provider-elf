@@ -65,7 +65,8 @@ type VMService interface {
 	GetHost(id string) (*models.Host, error)
 	GetHostsByCluster(clusterID string) (Hosts, error)
 	GetVlan(id string) (*models.Vlan, error)
-	UpsertLabel(key, value string) (*models.Label, error)
+	GetLabel(key, value string) (*models.Label, error)
+	CreateLabel(key, value string) (*models.Label, error)
 	DeleteLabel(key, value string, strict bool) (string, error)
 	AddLabelsToVM(vmID string, labels []string) (*models.Task, error)
 	CreateVMPlacementGroup(name, clusterID string, vmPolicy models.VMVMPolicy) (*models.WithTaskVMPlacementGroup, error)
@@ -722,8 +723,7 @@ func (svr *TowerVMService) WaitTask(ctx goctx.Context, id string, timeout, inter
 	return task, err
 }
 
-// UpsertLabel upserts a label.
-func (svr *TowerVMService) UpsertLabel(key, value string) (*models.Label, error) {
+func (svr *TowerVMService) GetLabel(key, value string) (*models.Label, error) {
 	getLabelParams := clientlabel.NewGetLabelsParams()
 	getLabelParams.RequestBody = &models.GetLabelsRequestBody{
 		Where: &models.LabelWhereInput{
@@ -731,22 +731,30 @@ func (svr *TowerVMService) UpsertLabel(key, value string) (*models.Label, error)
 			Value: TowerString(value),
 		},
 	}
+
 	getLabelResp, err := svr.Session.Label.GetLabels(getLabelParams)
 	if err != nil {
 		return nil, err
 	}
-	if len(getLabelResp.Payload) > 0 {
-		return getLabelResp.Payload[0], nil
+
+	if len(getLabelResp.Payload) == 0 {
+		return nil, errors.New(LabelNotFound)
 	}
 
+	return getLabelResp.Payload[0], nil
+}
+
+func (svr *TowerVMService) CreateLabel(key, value string) (*models.Label, error) {
 	createLabelParams := clientlabel.NewCreateLabelParams()
 	createLabelParams.RequestBody = []*models.LabelCreationParams{
 		{Key: &key, Value: &value},
 	}
+
 	createLabelResp, err := svr.Session.Label.CreateLabel(createLabelParams)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(createLabelResp.Payload) == 0 {
 		return nil, errors.New(LabelCreateFailed)
 	}

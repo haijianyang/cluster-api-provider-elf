@@ -144,6 +144,42 @@ func getKeyForVMDuplicate(name string) string {
 	return fmt.Sprintf("vm:duplicate:%s", name)
 }
 
+/* Label */
+
+var labelOperationLock sync.Mutex
+
+func getKeyForLabel(keyValue string) string {
+	return fmt.Sprintf("label:%s", keyValue)
+}
+
+// acquireTicketForLabelsOperation returns whether label operation can be performed.
+func acquireTicketForLabelsOperation(keyValues []string) bool {
+	labelOperationLock.Lock()
+	defer labelOperationLock.Unlock()
+
+	for i := 0; i < len(keyValues); i++ {
+		if _, found := inMemoryCache.Get(getKeyForLabel(keyValues[i])); found {
+			return false
+		}
+	}
+
+	for i := 0; i < len(keyValues); i++ {
+		inMemoryCache.Set(getKeyForLabel(keyValues[i]), nil, cache.NoExpiration)
+	}
+
+	return true
+}
+
+// releaseTicketForLabelsOperation releases the label being operated.
+func releaseTicketForLabelsOperation(keyValues []string) {
+	labelOperationLock.Lock()
+	defer labelOperationLock.Unlock()
+
+	for i := 0; i < len(keyValues); i++ {
+		inMemoryCache.Delete(getKeyForLabel(keyValues[i]))
+	}
+}
+
 /* GPU */
 
 type lockedGPUDevice struct {

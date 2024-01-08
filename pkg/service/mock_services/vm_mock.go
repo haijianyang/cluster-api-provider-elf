@@ -98,6 +98,21 @@ func (mr *MockVMServiceMockRecorder) Clone(elfCluster, elfMachine, bootstrapData
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clone", reflect.TypeOf((*MockVMService)(nil).Clone), elfCluster, elfMachine, bootstrapData, host, machineGPUDevices)
 }
 
+// CreateLabel mocks base method.
+func (m *MockVMService) CreateLabel(key, value string) (*models.Label, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateLabel", key, value)
+	ret0, _ := ret[0].(*models.Label)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateLabel indicates an expected call of CreateLabel.
+func (mr *MockVMServiceMockRecorder) CreateLabel(key, value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLabel", reflect.TypeOf((*MockVMService)(nil).CreateLabel), key, value)
+}
+
 // CreateVMPlacementGroup mocks base method.
 func (m *MockVMService) CreateVMPlacementGroup(name, clusterID string, vmPolicy models.VMVMPolicy) (*models.WithTaskVMPlacementGroup, error) {
 	m.ctrl.T.Helper()
@@ -308,6 +323,21 @@ func (mr *MockVMServiceMockRecorder) GetHostsByCluster(clusterID interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostsByCluster", reflect.TypeOf((*MockVMService)(nil).GetHostsByCluster), clusterID)
 }
 
+// GetLabel mocks base method.
+func (m *MockVMService) GetLabel(key, value string) (*models.Label, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLabel", key, value)
+	ret0, _ := ret[0].(*models.Label)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLabel indicates an expected call of GetLabel.
+func (mr *MockVMServiceMockRecorder) GetLabel(key, value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLabel", reflect.TypeOf((*MockVMService)(nil).GetLabel), key, value)
+}
+
 // GetTask mocks base method.
 func (m *MockVMService) GetTask(id string) (*models.Task, error) {
 	m.ctrl.T.Helper()
@@ -486,21 +516,6 @@ func (m *MockVMService) UpdateVM(vm *models.VM, elfMachine *v1beta1.ElfMachine) 
 func (mr *MockVMServiceMockRecorder) UpdateVM(vm, elfMachine interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateVM", reflect.TypeOf((*MockVMService)(nil).UpdateVM), vm, elfMachine)
-}
-
-// UpsertLabel mocks base method.
-func (m *MockVMService) UpsertLabel(key, value string) (*models.Label, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpsertLabel", key, value)
-	ret0, _ := ret[0].(*models.Label)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpsertLabel indicates an expected call of UpsertLabel.
-func (mr *MockVMServiceMockRecorder) UpsertLabel(key, value interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertLabel", reflect.TypeOf((*MockVMService)(nil).UpsertLabel), key, value)
 }
 
 // WaitTask mocks base method.

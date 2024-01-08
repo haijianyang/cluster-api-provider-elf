@@ -1190,9 +1190,9 @@ func (r *ElfMachineReconciler) reconcileLabels(ctx *context.MachineContext, vm *
 	capeManagedLabel := getLabelFromCache(capeManagedLabelKey)
 	if capeManagedLabel == nil {
 		var err error
-		capeManagedLabel, err = ctx.VMService.UpsertLabel(capeManagedLabelKey, "true")
+		capeManagedLabel, err = r.upsertLabel(ctx, capeManagedLabelKey, "true")
 		if err != nil {
-			return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelManaged())
+			return false, err
 		}
 
 		setLabelInCache(capeManagedLabel)
@@ -1206,34 +1206,94 @@ func (r *ElfMachineReconciler) reconcileLabels(ctx *context.MachineContext, vm *
 		}
 	}
 
-	namespaceLabel, err := ctx.VMService.UpsertLabel(towerresources.GetVMLabelNamespace(), ctx.ElfMachine.Namespace)
+	namespaceLabel, err := r.upsertLabel(ctx, towerresources.GetVMLabelNamespace(), ctx.ElfMachine.Namespace)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelNamespace())
+		return false, err
 	}
-	clusterNameLabel, err := ctx.VMService.UpsertLabel(towerresources.GetVMLabelClusterName(), ctx.ElfCluster.Name)
+
+	clusterNameLabel, err := r.upsertLabel(ctx, towerresources.GetVMLabelClusterName(), ctx.ElfCluster.Name)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelClusterName())
+		return false, err
 	}
 
 	var vipLabel *models.Label
 	if machineutil.IsControlPlaneMachine(ctx.ElfMachine) {
-		vipLabel, err = ctx.VMService.UpsertLabel(towerresources.GetVMLabelVIP(), ctx.ElfCluster.Spec.ControlPlaneEndpoint.Host)
+		vipLabel, err = r.upsertLabel(ctx, towerresources.GetVMLabelVIP(), ctx.ElfCluster.Spec.ControlPlaneEndpoint.Host)
 		if err != nil {
-			return false, errors.Wrapf(err, "failed to upsert label "+towerresources.GetVMLabelVIP())
+			return false, err
 		}
 	}
 
-	labelIDs := []string{*namespaceLabel.ID, *clusterNameLabel.ID, *capeManagedLabel.ID}
+	labels := []*models.Label{namespaceLabel, clusterNameLabel, capeManagedLabel}
 	if machineutil.IsControlPlaneMachine(ctx.ElfMachine) {
-		labelIDs = append(labelIDs, *vipLabel.ID)
+		labels = append(labels, vipLabel)
 	}
-	r.Logger.V(3).Info("Upsert labels", "labelIds", labelIDs)
-	_, err = ctx.VMService.AddLabelsToVM(*vm.ID, labelIDs)
-	if err != nil {
-		delLabelCache(capeManagedLabelKey)
 
-		return false, err
+	if ok, err := r.addLabelsToVM(ctx, vm, labels); err != nil || !ok {
+		return ok, err
 	}
+
+	return true, nil
+}
+
+func (r *ElfMachineReconciler) upsertLabel(ctx *context.MachineContext, key, value string) (*models.Label, error) {
+	label, err := ctx.VMService.GetLabel(key, value)
+	if err != nil && !service.IsLabelNotFound(err) {
+		return nil, err
+	} else if label != nil {
+		return label, nil
+	}
+
+	// Locking ensures that only one coroutine operates on the label at the same time,
+	// and concurrent operations will cause data inconsistency in the label.
+	labelKeyValues := []string{fmt.Sprintf("%s:%s", key, value)}
+	if ok := acquireTicketForLabelsOperation(labelKeyValues); ok {
+		defer releaseTicketForLabelsOperation(labelKeyValues)
+	} else {
+		return nil, nil
+	}
+
+	label, err = ctx.VMService.CreateLabel(key, value)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create label %s:%s", key, value)
+	}
+
+	if label == nil {
+		fmt.Println("********label", "null")
+	} else {
+		fmt.Println("********label", label.ID, label.Key, label.Value)
+	}
+
+	ctx.Logger.Info("Creating label succeeded", "id", *label.ID, "key", key, "value", value)
+
+	return label, nil
+}
+
+func (r *ElfMachineReconciler) addLabelsToVM(ctx *context.MachineContext, vm *models.VM, labels []*models.Label) (bool, error) {
+	labelIDs := make([]string, len(labels))
+	labelKeyValues := make([]string, len(labels))
+	for i := 0; i < len(labels); i++ {
+		labelIDs[i] = *labels[i].ID
+		labelKeyValues[i] = fmt.Sprintf("%s:%s", *labels[i].Key, *labels[i].Value)
+	}
+
+	// Locking ensures that only one coroutine operates on the label at the same time,
+	// and concurrent operations will cause data inconsistency in the label.
+	if ok := acquireTicketForLabelsOperation(labelKeyValues); ok {
+		defer releaseTicketForLabelsOperation(labelKeyValues)
+	} else {
+		return false, nil
+	}
+
+	_, err := ctx.VMService.AddLabelsToVM(*vm.ID, labelIDs)
+	if err != nil {
+		delLabelCache(towerresources.GetVMLabelManaged())
+
+		return false, errors.Wrapf(err, "failed to add labels %s to vm", labelKeyValues)
+	}
+
+	ctx.Logger.Info("Adding labels to vm succeeded", "labels", labelKeyValues)
+
 	return true, nil
 }
 

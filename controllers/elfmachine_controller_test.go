@@ -367,7 +367,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 			mockVMService.EXPECT().Get(elfMachine.Status.VMRef).Return(vm, nil)
 			mockVMService.EXPECT().GetVMNics(*vm.ID).Return([]*models.VMNic{nic}, nil)
 			mockVMService.EXPECT().GetVMPlacementGroup(gomock.Any()).Return(placementGroup, nil)
-			mockVMService.EXPECT().UpsertLabel(gomock.Any(), gomock.Any()).Times(3).Return(fake.NewTowerLabel(), nil)
+			mockVMService.EXPECT().GetLabel(gomock.Any(), gomock.Any()).Times(3).Return(fake.NewTowerLabel(), nil)
 			mockVMService.EXPECT().AddLabelsToVM(gomock.Any(), gomock.Any()).Times(1)
 			mockVMService.EXPECT().FindVMsByName(elfMachine.Name).Return(nil, nil)
 
@@ -1695,7 +1695,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 	Context("Reconcile ElfMachine providerID", func() {
 		BeforeEach(func() {
-			mockVMService.EXPECT().UpsertLabel(gomock.Any(), gomock.Any()).Times(3).Return(fake.NewTowerLabel(), nil)
+			mockVMService.EXPECT().GetLabel(gomock.Any(), gomock.Any()).Times(3).Return(fake.NewTowerLabel(), nil)
 			mockVMService.EXPECT().AddLabelsToVM(gomock.Any(), gomock.Any()).Times(1)
 		})
 
@@ -1760,7 +1760,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 			mockVMService.EXPECT().Get(elfMachine.Status.VMRef).Times(20).Return(vm, nil)
 			mockVMService.EXPECT().GetVMPlacementGroup(gomock.Any()).Times(40).Return(placementGroup, nil)
-			mockVMService.EXPECT().UpsertLabel(gomock.Any(), gomock.Any()).Times(60).Return(fake.NewTowerLabel(), nil)
+			mockVMService.EXPECT().GetLabel(gomock.Any(), gomock.Any()).Times(60).Return(fake.NewTowerLabel(), nil)
 			mockVMService.EXPECT().AddLabelsToVM(gomock.Any(), gomock.Any()).Times(20)
 			mockVMService.EXPECT().FindVMsByName(elfMachine.Name).Times(12).Return(nil, nil)
 
@@ -2189,7 +2189,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 			mockVMService.EXPECT().Get(elfMachine.Status.VMRef).Return(vm, nil)
 			mockVMService.EXPECT().GetVMNics(*vm.ID).Return([]*models.VMNic{nic}, nil)
 			mockVMService.EXPECT().GetVMPlacementGroup(gomock.Any()).Times(2).Return(placementGroup, nil)
-			mockVMService.EXPECT().UpsertLabel(gomock.Any(), gomock.Any()).Times(3).Return(fake.NewTowerLabel(), nil)
+			mockVMService.EXPECT().GetLabel(gomock.Any(), gomock.Any()).Times(3).Return(fake.NewTowerLabel(), nil)
 			mockVMService.EXPECT().AddLabelsToVM(gomock.Any(), gomock.Any()).Times(1)
 			mockVMService.EXPECT().FindVMsByName(elfMachine.Name).Return(nil, nil)
 
@@ -3473,19 +3473,19 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 			unexpectedError := errors.New("unexpected error")
 			setLabelInCache(capeManagedLabel)
-			mockVMService.EXPECT().UpsertLabel(*namespaceLabel.Key, *namespaceLabel.Value).Return(namespaceLabel, nil)
-			mockVMService.EXPECT().UpsertLabel(*clusterNameLabel.Key, *clusterNameLabel.Value).Return(clusterNameLabel, nil)
+			mockVMService.EXPECT().GetLabel(*namespaceLabel.Key, *namespaceLabel.Value).Return(namespaceLabel, nil)
+			mockVMService.EXPECT().GetLabel(*clusterNameLabel.Key, *clusterNameLabel.Value).Return(clusterNameLabel, nil)
 			mockVMService.EXPECT().AddLabelsToVM(*vm.ID, gomock.InAnyOrder([]string{*capeManagedLabel.ID, *namespaceLabel.ID, *clusterNameLabel.ID})).Return(nil, unexpectedError)
 			reconciler := &ElfMachineReconciler{ControllerContext: ctrlContext, NewVMService: mockNewVMService}
 			ok, err := reconciler.reconcileLabels(machineContext, vm)
 			Expect(ok).To(BeFalse())
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(unexpectedError.Error()))
+			Expect(err.Error()).To(ContainSubstring(unexpectedError.Error()))
 			Expect(getLabelFromCache(*capeManagedLabel.Key)).To(BeNil())
 
-			mockVMService.EXPECT().UpsertLabel(*capeManagedLabel.Key, *capeManagedLabel.Value).Return(capeManagedLabel, nil)
-			mockVMService.EXPECT().UpsertLabel(*namespaceLabel.Key, *namespaceLabel.Value).Return(namespaceLabel, nil)
-			mockVMService.EXPECT().UpsertLabel(*clusterNameLabel.Key, *clusterNameLabel.Value).Return(clusterNameLabel, nil)
+			mockVMService.EXPECT().GetLabel(*capeManagedLabel.Key, *capeManagedLabel.Value).Return(capeManagedLabel, nil)
+			mockVMService.EXPECT().GetLabel(*namespaceLabel.Key, *namespaceLabel.Value).Return(namespaceLabel, nil)
+			mockVMService.EXPECT().GetLabel(*clusterNameLabel.Key, *clusterNameLabel.Value).Return(clusterNameLabel, nil)
 			mockVMService.EXPECT().AddLabelsToVM(*vm.ID, gomock.InAnyOrder([]string{*capeManagedLabel.ID, *namespaceLabel.ID, *clusterNameLabel.ID})).Return(nil, nil)
 			reconciler = &ElfMachineReconciler{ControllerContext: ctrlContext, NewVMService: mockNewVMService}
 			ok, err = reconciler.reconcileLabels(machineContext, vm)

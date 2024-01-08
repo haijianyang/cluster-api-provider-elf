@@ -35,6 +35,7 @@ const (
 	VMPlacementGroupDuplicate = "PLACEMENT_GROUP_DUPLICATE_NAME"
 	LabelCreateFailed         = "LABEL_CREATE_FAILED"
 	LabelAddFailed            = "LABEL_ADD_FAILED"
+	LabelNotFound             = "LABEL_NOT_FOUND"
 	CloudInitError            = "VM_CLOUD_INIT_CONFIG_ERROR"
 	MemoryInsufficientError   = "HostAvailableMemoryFilter"
 	PlacementGroupError       = "PlacementGroupFilter" // SMTX OS <= 5.0.4
@@ -47,6 +48,10 @@ const (
 
 func IsVMNotFound(err error) bool {
 	return strings.Contains(err.Error(), VMNotFound)
+}
+
+func IsLabelNotFound(err error) bool {
+	return strings.Contains(err.Error(), LabelNotFound)
 }
 
 func IsVMDuplicate(err error) bool {
