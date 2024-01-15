@@ -327,9 +327,9 @@ func (r *ElfClusterReconciler) reconcileNormal(ctx *context.ClusterContext) (rec
 	r.cleanOrphanLabels(ctx)
 
 	// Wait until the API server is online and accessible.
-	if !r.isAPIServerOnline(ctx) {
-		return reconcile.Result{}, nil
-	}
+	// if !r.isAPIServerOnline(ctx) {
+	// 	return reconcile.Result{}, nil
+	// }
 
 	return reconcile.Result{}, nil
 }

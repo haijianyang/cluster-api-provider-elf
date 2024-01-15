@@ -421,9 +421,9 @@ func (r *ElfMachineReconciler) reconcileNormal(ctx *context.MachineContext) (rec
 		return reconcile.Result{}, nil
 	}
 
-	if result, err := r.reconcilePlacementGroup(ctx); err != nil || !result.IsZero() {
-		return result, err
-	}
+	// if result, err := r.reconcilePlacementGroup(ctx); err != nil || !result.IsZero() {
+	// 	return result, err
+	// }
 
 	if r.isWaitingForStaticIPAllocation(ctx) {
 		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForStaticIPAllocationReason, clusterv1.ConditionSeverityInfo, "")
@@ -452,35 +452,37 @@ func (r *ElfMachineReconciler) reconcileNormal(ctx *context.MachineContext) (rec
 		return reconcile.Result{}, errors.Wrapf(err, "failed to reconcile labels")
 	}
 
+	return reconcile.Result{}, nil
+
 	// Reconcile the ElfMachine's providerID using the VM's UUID.
 	if err := r.reconcileProviderID(ctx, vm); err != nil {
 		return reconcile.Result{}, errors.Wrapf(err, "unexpected error while reconciling providerID for %s", ctx)
 	}
 
 	// Reconcile the ElfMachine's node addresses from the VM's IP addresses.
-	if ok, err := r.reconcileNetwork(ctx, vm); err != nil {
-		return reconcile.Result{}, err
-	} else if !ok {
-		return reconcile.Result{RequeueAfter: config.DefaultRequeueTimeout}, nil
-	}
+	// if ok, err := r.reconcileNetwork(ctx, vm); err != nil {
+	// 	return reconcile.Result{}, err
+	// } else if !ok {
+	// 	return reconcile.Result{RequeueAfter: config.DefaultRequeueTimeout}, nil
+	// }
 
-	ctx.ElfMachine.Status.Ready = true
-	conditions.MarkTrue(ctx.ElfMachine, infrav1.VMProvisionedCondition)
+	// ctx.ElfMachine.Status.Ready = true
+	// conditions.MarkTrue(ctx.ElfMachine, infrav1.VMProvisionedCondition)
 
-	if ok, err := r.reconcileNode(ctx, vm); !ok {
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+	// if ok, err := r.reconcileNode(ctx, vm); !ok {
+	// 	if err != nil {
+	// 		return reconcile.Result{}, err
+	// 	}
 
-		ctx.Logger.Info("Node providerID is not reconciled",
-			"namespace", ctx.ElfMachine.Namespace, "elfMachine", ctx.ElfMachine.Name)
+	// 	ctx.Logger.Info("Node providerID is not reconciled",
+	// 		"namespace", ctx.ElfMachine.Namespace, "elfMachine", ctx.ElfMachine.Name)
 
-		return reconcile.Result{RequeueAfter: config.DefaultRequeueTimeout}, nil
-	}
+	// 	return reconcile.Result{RequeueAfter: config.DefaultRequeueTimeout}, nil
+	// }
 
-	if result, err := r.deleteDuplicateVMs(ctx); err != nil || !result.IsZero() {
-		return result, err
-	}
+	// if result, err := r.deleteDuplicateVMs(ctx); err != nil || !result.IsZero() {
+	// 	return result, err
+	// }
 
 	return reconcile.Result{}, nil
 }
@@ -1200,11 +1202,11 @@ func (r *ElfMachineReconciler) reconcileLabels(ctx *context.MachineContext, vm *
 
 	// If the virtual machine has been labeled with managed label,
 	// it is considered that all labels have been labeled.
-	for i := 0; i < len(vm.Labels); i++ {
-		if *vm.Labels[i].ID == *capeManagedLabel.ID {
-			return true, nil
-		}
-	}
+	// for i := 0; i < len(vm.Labels); i++ {
+	// 	if *vm.Labels[i].ID == *capeManagedLabel.ID {
+	// 		return true, nil
+	// 	}
+	// }
 
 	namespaceLabel, err := ctx.VMService.UpsertLabel(towerresources.GetVMLabelNamespace(), ctx.ElfMachine.Namespace)
 	if err != nil {
@@ -1223,10 +1225,28 @@ func (r *ElfMachineReconciler) reconcileLabels(ctx *context.MachineContext, vm *
 		}
 	}
 
-	labelIDs := []string{*namespaceLabel.ID, *clusterNameLabel.ID, *capeManagedLabel.ID}
-	if machineutil.IsControlPlaneMachine(ctx.ElfMachine) {
-		labelIDs = append(labelIDs, *vipLabel.ID)
+	labelIDs := []string{}
+	for i := 0; i < len(vm.Labels); i++ {
+		if *vm.Labels[i].ID == *capeManagedLabel.ID ||
+			*vm.Labels[i].ID == *namespaceLabel.ID ||
+			*vm.Labels[i].ID == *clusterNameLabel.ID ||
+			*vm.Labels[i].ID == *vipLabel.ID {
+			continue
+		} else {
+			if *vm.Labels[i].ID == *vipLabel.ID {
+				if machineutil.IsControlPlaneMachine(ctx.ElfMachine) {
+					labelIDs = append(labelIDs, *vipLabel.ID)
+				}
+			} else {
+				labelIDs = append(labelIDs, *vm.Labels[i].ID)
+			}
+		}
 	}
+
+	if len(labelIDs) == 0 {
+		return true, nil
+	}
+
 	r.Logger.V(3).Info("Upsert labels", "labelIds", labelIDs)
 	_, err = ctx.VMService.AddLabelsToVM(*vm.ID, labelIDs)
 	if err != nil {

@@ -798,6 +798,8 @@ func (svr *TowerVMService) CleanUnusedLabels(keys []string) ([]string, error) {
 		},
 	}
 
+	fmt.Println("**********", time.Now().Add(-24*time.Hour).UTC().Format(time.RFC3339))
+
 	deleteLabelResp, err := svr.Session.Label.DeleteLabel(deleteLabelParams)
 	if err != nil {
 		return nil, err

@@ -30,7 +30,7 @@ const (
 )
 
 func GetResourcePrefix() string {
-	return util.GetEnv(TowerResourcePrefix, "cape")
+	return util.GetEnv(TowerResourcePrefix, "sks")
 }
 
 func IsAllowCustomVMConfig() bool {
