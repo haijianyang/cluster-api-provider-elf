@@ -110,6 +110,10 @@ func TowerInt32(v int) *int32 {
 	return &val
 }
 
+func TowerInt64(v int64) *int64 {
+	return &v
+}
+
 func TowerFloat64(v int) *float64 {
 	val := float64(v)
 
@@ -204,6 +208,12 @@ func IsVMMigrationTask(task *models.Task) bool {
 
 func IsPlacementGroupTask(task *models.Task) bool {
 	return strings.Contains(GetTowerString(task.Description), "VM placement group") // Update VM placement group
+}
+
+// IsTowerResourcePerformingAnOperation returns whether the Tower resource is being operated on.
+// Before operating on Tower resources, call this function first to avoid Tower resource lock conflicts.
+func IsTowerResourcePerformingAnOperation(entityAsyncStatus *models.EntityAsyncStatus) bool {
+	return entityAsyncStatus != nil
 }
 
 // HasGPUsCanNotBeUsedForVM returns whether the specified GPUs contains GPU

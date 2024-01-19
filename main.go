@@ -62,8 +62,9 @@ var (
 	webhookOpts                 webhook.Options
 	watchNamespace              string
 
-	elfClusterConcurrency int
-	elfMachineConcurrency int
+	elfClusterConcurrency         int
+	elfMachineConcurrency         int
+	elfMachineTemplateConcurrency int
 
 	tlsOptions = flags.TLSOptions{}
 
@@ -89,6 +90,9 @@ func InitFlags(fs *pflag.FlagSet) {
 
 	fs.IntVar(&elfMachineConcurrency, "max-elfmachine-concurrent-reconciles", 10,
 		"Number of ELF machines to process simultaneously")
+
+	fs.IntVar(&elfMachineTemplateConcurrency, "max-elfmachinetemplate-concurrent-reconciles", 10,
+		"Number of ELF machine templates to process simultaneously")
 
 	fs.StringVar(&managerOpts.PodName, "pod-name", defaultPodName,
 		"The name of the pod running the controller manager.")
@@ -205,6 +209,10 @@ func main() {
 		}
 
 		if err := controllers.AddMachineControllerToManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: elfMachineConcurrency}); err != nil {
+			return err
+		}
+
+		if err := controllers.AddMachineTemplateControllerToManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: elfMachineTemplateConcurrency}); err != nil {
 			return err
 		}
 

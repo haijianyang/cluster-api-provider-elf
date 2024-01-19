@@ -48,6 +48,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	infrav1 "github.com/smartxworks/cluster-api-provider-elf/api/v1beta1"
+	"github.com/smartxworks/cluster-api-provider-elf/pkg/cloudinit"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/config"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/context"
 	capeerrors "github.com/smartxworks/cluster-api-provider-elf/pkg/errors"
@@ -211,6 +212,7 @@ func (r *ElfMachineReconciler) Reconcile(ctx goctx.Context, req ctrl.Request) (_
 		conditions.SetSummary(machineContext.ElfMachine,
 			conditions.WithConditions(
 				infrav1.VMProvisionedCondition,
+				infrav1.ResourcesHotUpdatedCondition,
 				infrav1.TowerAvailableCondition,
 			),
 		)
@@ -514,6 +516,7 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 		if bootstrapData == "" {
 			return nil, false, errors.New("bootstrapData is empty")
 		}
+		bootstrapData = cloudinit.JoinAddNewDiskCapacityToRootCommandsToCloudinit(bootstrapData)
 
 		if ok, message, err := isELFScheduleVMErrorRecorded(ctx); err != nil {
 			return nil, false, err
@@ -646,6 +649,10 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 		return vm, false, err
 	}
 
+	if ok, err := r.reconcileVMResources(ctx, vm); err != nil || !ok {
+		return vm, false, err
+	}
+
 	return vm, true, nil
 }
 
@@ -731,6 +738,14 @@ func (r *ElfMachineReconciler) reconcileVMStatus(ctx *context.MachineContext, vm
 			ctx.Logger.Info("The VM configuration has been modified, and the VM is stopped, just restore the VM configuration to expected values", "vmRef", ctx.ElfMachine.Status.VMRef, "updatedVMRestrictedFields", updatedVMRestrictedFields)
 
 			return false, r.updateVM(ctx, vm)
+		}
+
+		// Before the virtual machine is started for the first time, if the
+		// current disk capacity of the virtual machine is smaller than expected,
+		// expand the disk capacity first and then start it. cloud-init will
+		// add the new disk capacity to root.
+		if ok, err := r.reconcieVMVolume(ctx, vm, infrav1.VMProvisionedCondition); err != nil || !ok {
+			return ok, err
 		}
 
 		return false, r.powerOnVM(ctx, vm)

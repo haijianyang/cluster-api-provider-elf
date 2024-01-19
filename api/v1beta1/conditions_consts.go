@@ -117,6 +117,29 @@ const (
 	// WaitingForAvailableHostWithEnoughGPUsReason (Severity=Info) documents an ElfMachine
 	// waiting for an available host with enough GPUs to create VM.
 	WaitingForAvailableHostWithEnoughGPUsReason = "WaitingForAvailableHostWithEnoughGPUs"
+
+	// ResourcesHotUpdatedCondition documents the status of the hot updating resources of a VM.
+	ResourcesHotUpdatedCondition = "ResourceHotUpdated"
+
+	// WaitingForResourcesHotUpdateReason (Severity=Info) documents an ElfMachine waiting for updating resources.
+	WaitingForResourcesHotUpdateReason = "WaitingForResourcesHotUpdate"
+
+	// ExpandingDiskReason documents (Severity=Info) ElfMachine currently executing the expand disk operation.
+	ExpandingDiskReason = "ExpandingDisk"
+
+	// ExpandingDiskFailedReason (Severity=Warning) documents an ElfMachine controller detecting
+	// an error while expanding disk; those kind of errors are usually transient and failed updating
+	// are automatically re-tried by the controller.
+	ExpandingDiskFailedReason = "ExpandingDiskFailed"
+
+	// AddingNewDiskCapacityToRootReason documents (Severity=Info) ElfMachine currently executing the
+	// adding new disk capacity to root directory operation.
+	AddingNewDiskCapacityToRootReason = "AddingNewDiskCapacityToRoot"
+
+	// AddingNewDiskCapacityToRootFailedReason (Severity=Warning) documents an ElfMachine controller
+	// detecting an error while adding new disk capacity to root directory; those kind of errors are
+	// usually transient and failed updating are automatically re-tried by the controller.
+	AddingNewDiskCapacityToRootFailedReason = "AddingNewDiskCapacityToRootFailed"
 )
 
 // Conditions and Reasons related to make connections to a Tower. Can currently be used by ElfCluster and ElfMachine

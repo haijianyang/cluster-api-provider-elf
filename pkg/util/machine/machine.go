@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "github.com/smartxworks/cluster-api-provider-elf/api/v1beta1"
@@ -88,6 +89,47 @@ func GetControlPlaneElfMachinesInCluster(ctx goctx.Context, ctrlClient client.Cl
 	return machines, nil
 }
 
+func GetElfMachinesForMD(
+	ctx goctx.Context,
+	ctrlClient client.Client,
+	cluster *clusterv1.Cluster,
+	md *clusterv1.MachineDeployment) ([]*infrav1.ElfMachine, error) {
+	elfMachineList := &infrav1.ElfMachineList{}
+	labels := map[string]string{
+		clusterv1.ClusterNameLabel:           cluster.Name,
+		clusterv1.MachineDeploymentNameLabel: md.Name,
+	}
+	if err := ctrlClient.List(ctx, elfMachineList, client.InNamespace(md.Namespace), client.MatchingLabels(labels)); err != nil {
+		return nil, err
+	}
+
+	elfMachines := make([]*infrav1.ElfMachine, len(elfMachineList.Items))
+	for i := range elfMachineList.Items {
+		elfMachines[i] = &elfMachineList.Items[i]
+	}
+
+	return elfMachines, nil
+}
+
+func GetControlPlaneMachinesForCluster(ctx goctx.Context, ctrlClient client.Client, cluster *clusterv1.Cluster) ([]*clusterv1.Machine, error) {
+	ms := &clusterv1.MachineList{}
+	labels := map[string]string{
+		clusterv1.ClusterNameLabel:         cluster.Name,
+		clusterv1.MachineControlPlaneLabel: "",
+	}
+
+	if err := ctrlClient.List(ctx, ms, client.InNamespace(cluster.Namespace), client.MatchingLabels(labels)); err != nil {
+		return nil, err
+	}
+
+	machines := make([]*clusterv1.Machine, len(ms.Items))
+	for i := range ms.Items {
+		machines[i] = &ms.Items[i]
+	}
+
+	return machines, nil
+}
+
 // IsControlPlaneMachine returns true if the provided resource is
 // a member of the control plane.
 func IsControlPlaneMachine(machine metav1.Object) bool {
@@ -112,6 +154,19 @@ func GetNodeGroupName(machine *clusterv1.Machine) string {
 	clusterName := labelsutil.GetClusterNameLabelLabel(machine)
 
 	return strings.ReplaceAll(nodeGroupName, fmt.Sprintf("%s-", clusterName), "")
+}
+
+func IsUpdatingElfMachineResources(elfMachine *infrav1.ElfMachine) bool {
+	if conditions.Has(elfMachine, infrav1.ResourcesHotUpdatedCondition) &&
+		conditions.IsFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition) {
+		return true
+	}
+
+	return false
+}
+
+func NeedUpdateElfMachineResources(elfMachineTemplate *infrav1.ElfMachineTemplate, elfMachine *infrav1.ElfMachine) bool {
+	return elfMachineTemplate.Spec.Template.Spec.DiskGiB > elfMachine.Spec.DiskGiB
 }
 
 func ConvertProviderIDToUUID(providerID *string) string {

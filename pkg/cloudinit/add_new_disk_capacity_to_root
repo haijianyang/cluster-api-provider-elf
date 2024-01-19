@@ -1,0 +1,5 @@
+runcmd:
+  - "growpart /dev/vda 2"
+  - "pvresize /dev/vda2"
+  - "lvextend -l+100%FREE -n /dev/mapper/rl-root"
+  - "resize2fs /dev/mapper/rl-root"
