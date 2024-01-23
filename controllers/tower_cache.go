@@ -55,7 +55,11 @@ func isELFScheduleVMErrorRecorded(ctx *context.MachineContext) (bool, string, er
 	lock.Lock()
 	defer lock.Unlock()
 
-	if resource := getClusterResource(getKeyForInsufficientMemoryError(ctx.ElfCluster.Spec.Cluster)); resource != nil {
+	if resource := getClusterResource(getKeyForElfClusterConnectionError(ctx.ElfCluster.Spec.Cluster)); resource != nil {
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForELFClusterConnectionAvailableReason, clusterv1.ConditionSeverityInfo, "")
+
+		return true, fmt.Sprintf("Connection status error detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster), nil
+	} else if resource := getClusterResource(getKeyForInsufficientMemoryError(ctx.ElfCluster.Spec.Cluster)); resource != nil {
 		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForELFClusterWithSufficientMemoryReason, clusterv1.ConditionSeverityInfo, "")
 
 		return true, fmt.Sprintf("Insufficient memory detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster), nil
@@ -79,6 +83,16 @@ func isELFScheduleVMErrorRecorded(ctx *context.MachineContext) (bool, string, er
 func recordElfClusterMemoryInsufficient(ctx *context.MachineContext, isInsufficient bool) {
 	key := getKeyForInsufficientMemoryError(ctx.ElfCluster.Spec.Cluster)
 	if isInsufficient {
+		inMemoryCache.Set(key, newClusterResource(), resourceDuration)
+	} else {
+		inMemoryCache.Delete(key)
+	}
+}
+
+// recordElfClusterConnectionError records whether the cluster connection status is error.
+func recordElfClusterConnectionError(ctx *context.MachineContext, isError bool) {
+	key := getKeyForElfClusterConnectionError(ctx.ElfCluster.Spec.Cluster)
+	if isError {
 		inMemoryCache.Set(key, newClusterResource(), resourceDuration)
 	} else {
 		inMemoryCache.Delete(key)
@@ -116,7 +130,9 @@ func canRetryVMOperation(ctx *context.MachineContext) (bool, error) {
 	lock.Lock()
 	defer lock.Unlock()
 
-	if ok := canRetry(getKeyForInsufficientMemoryError(ctx.ElfCluster.Spec.Cluster)); ok {
+	if ok := canRetry(getKeyForElfClusterConnectionError(ctx.ElfCluster.Spec.Cluster)); ok {
+		return true, nil
+	} else if ok := canRetry(getKeyForInsufficientMemoryError(ctx.ElfCluster.Spec.Cluster)); ok {
 		return true, nil
 	}
 
@@ -158,8 +174,12 @@ func getClusterResource(key string) *clusterResource {
 	return nil
 }
 
+func getKeyForElfClusterConnectionError(clusterID string) string {
+	return fmt.Sprintf("elfcluster:connection:error:%s", clusterID)
+}
+
 func getKeyForInsufficientMemoryError(clusterID string) string {
-	return fmt.Sprintf("insufficient:memory:%s", clusterID)
+	return fmt.Sprintf("elfcluster:insufficient:memory:%s", clusterID)
 }
 
 func getKeyForDuplicatePlacementGroupError(placementGroup string) string {

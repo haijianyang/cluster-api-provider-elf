@@ -922,6 +922,7 @@ func (r *ElfMachineReconciler) reconcileVMTask(ctx *context.MachineContext, vm *
 
 		if service.IsCloneVMTask(task) || service.IsPowerOnVMTask(task) {
 			releaseTicketForCreateVM(ctx.ElfMachine.Name)
+			recordElfClusterConnectionError(ctx, false)
 			recordElfClusterMemoryInsufficient(ctx, false)
 
 			if err := recordPlacementGroupPolicyNotSatisfied(ctx, false); err != nil {
@@ -942,6 +943,7 @@ func (r *ElfMachineReconciler) reconcileVMTask(ctx *context.MachineContext, vm *
 // reconcileVMFailedTask handles failed virtual machine tasks.
 func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext, task *models.Task, taskRef, vmRef string) error {
 	errorMessage := service.GetTowerString(task.ErrorMessage)
+	errorCode := service.GetTowerString(task.ErrorCode)
 	if service.IsGPUAssignFailed(errorMessage) {
 		errorMessage = service.ParseGPUAssignFailed(errorMessage)
 	}
@@ -952,7 +954,7 @@ func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext
 		ctx.ElfMachine.Status.FailureMessage = pointer.String(fmt.Sprintf("VM cloud-init config error: %s", service.FormatCloudInitError(errorMessage)))
 	}
 
-	ctx.Logger.Error(errors.New("VM task failed"), "", "vmRef", vmRef, "taskRef", taskRef, "taskErrorMessage", errorMessage, "taskErrorCode", service.GetTowerString(task.ErrorCode), "taskDescription", service.GetTowerString(task.Description))
+	ctx.Logger.Error(errors.New("VM task failed"), "", "vmRef", vmRef, "taskRef", taskRef, "taskErrorMessage", errorMessage, "taskErrorCode", errorCode, "taskDescription", service.GetTowerString(task.Description))
 
 	switch {
 	case service.IsCloneVMTask(task):
@@ -969,6 +971,10 @@ func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext
 		if ctx.ElfMachine.RequiresGPUDevices() {
 			unlockGPUDevicesLockedByVM(ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name)
 		}
+	case service.IsElfClusterConnectionError(errorCode):
+		recordElfClusterConnectionError(ctx, true)
+
+		return errors.New(errorMessage)
 	case service.IsMemoryInsufficientError(errorMessage):
 		recordElfClusterMemoryInsufficient(ctx, true)
 		message := fmt.Sprintf("Insufficient memory detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster)

@@ -110,6 +110,10 @@ const (
 	// waiting for ELF cluster with sufficient memory to create or power on VM.
 	WaitingForELFClusterWithSufficientMemoryReason = "WaitingForELFClusterWithSufficientMemory"
 
+	// WaitingForELFClusterConnectionAvailableReason (Severity=Info) documents an ElfMachine
+	// waiting for ELF cluster connection available.
+	WaitingForELFClusterConnectionAvailableReason = "WaitingForELFClusterConnectionAvailable"
+
 	// WaitingForAvailableHostRequiredByPlacementGroupReason (Severity=Info) documents an ElfMachine
 	// waiting for an available host required by placement group to create VM.
 	WaitingForAvailableHostRequiredByPlacementGroupReason = "WaitingForAvailableHostRequiredByPlacementGroup"
