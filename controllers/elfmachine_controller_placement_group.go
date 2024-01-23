@@ -48,6 +48,7 @@ import (
 
 // reconcilePlacementGroup makes sure that the placement group exist.
 func (r *ElfMachineReconciler) reconcilePlacementGroup(ctx *context.MachineContext) (reconcile.Result, error) {
+	return reconcile.Result{}, nil
 	placementGroupName, err := towerresources.GetVMPlacementGroupName(ctx, ctx.Client, ctx.Machine, ctx.Cluster)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -132,6 +133,7 @@ func (r *ElfMachineReconciler) createPlacementGroup(ctx *context.MachineContext,
 // 2. An empty string indicates that there is an available host.
 // 3. A non-empty string indicates that the specified host ID was returned.
 func (r *ElfMachineReconciler) preCheckPlacementGroup(ctx *context.MachineContext) (rethost *string, reterr error) {
+	return service.TowerString(""), nil
 	defer func() {
 		if rethost == nil {
 			conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForAvailableHostRequiredByPlacementGroupReason, clusterv1.ConditionSeverityInfo, "")

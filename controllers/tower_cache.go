@@ -64,6 +64,14 @@ func isELFScheduleVMErrorRecorded(ctx *context.MachineContext) (bool, string, er
 		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForELFClusterWithSufficientStorageReason, clusterv1.ConditionSeverityInfo, "")
 
 		return true, fmt.Sprintf("Insufficient storage detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster), nil
+	} else if resource := getClusterResource(getKeyForElfClusterConnectionError(ctx.ElfCluster.Spec.Cluster)); resource != nil {
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForELFClusterConnectionAvailableReason, clusterv1.ConditionSeverityInfo, "")
+
+		return true, fmt.Sprintf("Connection status error detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster), nil
+	} else if resource := getClusterResource(getKeyForInsufficientMemoryError(ctx.ElfCluster.Spec.Cluster)); resource != nil {
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.VMProvisionedCondition, infrav1.WaitingForELFClusterWithSufficientMemoryReason, clusterv1.ConditionSeverityInfo, "")
+
+		return true, fmt.Sprintf("Insufficient memory detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster), nil
 	}
 
 	placementGroupName, err := towerresources.GetVMPlacementGroupName(ctx, ctx.Client, ctx.Machine, ctx.Cluster)
@@ -93,6 +101,16 @@ func recordElfClusterMemoryInsufficient(ctx *context.MachineContext, isInsuffici
 // recordElfClusterStorageInsufficient records whether the storage is insufficient.
 func recordElfClusterStorageInsufficient(ctx *context.MachineContext, isError bool) {
 	key := getKeyForInsufficientStorageError(ctx.ElfCluster.Spec.Cluster)
+	if isError {
+		inMemoryCache.Set(key, newClusterResource(), resourceDuration)
+	} else {
+		inMemoryCache.Delete(key)
+	}
+}
+
+// recordElfClusterConnectionError records whether the cluster connection status is error.
+func recordElfClusterConnectionError(ctx *context.MachineContext, isError bool) {
+	key := getKeyForElfClusterConnectionError(ctx.ElfCluster.Spec.Cluster)
 	if isError {
 		inMemoryCache.Set(key, newClusterResource(), resourceDuration)
 	} else {

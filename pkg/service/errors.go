@@ -38,6 +38,7 @@ const (
 	CloudInitError            = "VM_CLOUD_INIT_CONFIG_ERROR"
 	MemoryInsufficientError   = "HostAvailableMemoryFilter"
 	StorageInsufficientError  = "EAllocSpace"
+	ElfClusterConnectionError = "CLUSTER_CONNECTION_STATUS_ERROR"
 	PlacementGroupError       = "PlacementGroupFilter" // SMTX OS <= 5.0.4
 	PlacementGroupMustError   = "PlacementGroupMustFilter"
 	PlacementGroupPriorError  = "PlacementGroupPriorFilter"
@@ -114,6 +115,10 @@ func ParseGPUAssignFailed(message string) string {
 
 func IsStorageInsufficientError(message string) bool {
 	return strings.Contains(message, StorageInsufficientError)
+}
+
+func IsElfClusterConnectionError(message string) bool {
+	return strings.Contains(message, ElfClusterConnectionError)
 }
 
 func IsMemoryInsufficientError(message string) bool {

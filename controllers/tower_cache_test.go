@@ -37,6 +37,7 @@ const (
 	clusterKey                    = "clusterID"
 	clusterInsufficientMemoryKey  = "clusterInsufficientMemory"
 	clusterInsufficientStorageKey = "clusterInsufficientStorage"
+	clusterConnectionKey         = "clusterConnection"
 	placementGroupKey             = "getPlacementGroupName"
 )
 
@@ -180,6 +181,23 @@ var _ = Describe("TowerCache", func() {
 		Expect(msg).To(ContainSubstring("Not satisfy policy detected for the placement group"))
 		Expect(err).ShouldNot(HaveOccurred())
 		expectConditions(elfMachine, []conditionAssertion{{infrav1.VMProvisionedCondition, corev1.ConditionFalse, clusterv1.ConditionSeverityInfo, infrav1.WaitingForPlacementGroupPolicySatisfiedReason}})
+
+		resetMemoryCache()
+		elfCluster.Spec.Cluster = clusterConnectionKey
+		recordIsUnmet(machineContext, clusterConnectionKey, true)
+		ok, msg, err = isELFScheduleVMErrorRecorded(machineContext)
+		Expect(ok).To(BeTrue())
+		Expect(msg).To(ContainSubstring("Connection status error detected for the ELF cluster"))
+		Expect(err).ShouldNot(HaveOccurred())
+		expectConditions(elfMachine, []conditionAssertion{{infrav1.VMProvisionedCondition, corev1.ConditionFalse, clusterv1.ConditionSeverityInfo, infrav1.WaitingForELFClusterConnectionAvailableReason}})
+
+		resetMemoryCache()
+		recordIsUnmet(machineContext, placementGroupKey, true)
+		ok, msg, err = isELFScheduleVMErrorRecorded(machineContext)
+		Expect(ok).To(BeTrue())
+		Expect(msg).To(ContainSubstring("Not satisfy policy detected for the placement group"))
+		Expect(err).ShouldNot(HaveOccurred())
+		expectConditions(elfMachine, []conditionAssertion{{infrav1.VMProvisionedCondition, corev1.ConditionFalse, clusterv1.ConditionSeverityInfo, infrav1.WaitingForPlacementGroupPolicySatisfiedReason}})
 	})
 
 	It("PG Cache", func() {
@@ -236,6 +254,8 @@ func getKey(ctx *context.MachineContext, name string) string {
 		return getKeyForInsufficientMemoryError(name)
 	} else if name == clusterInsufficientStorageKey {
 		return getKeyForInsufficientStorageError(name)
+	} else if name == clusterConnectionKey {
+		return getKeyForElfClusterConnectionError(name)
 	}
 
 	placementGroupName, err := towerresources.GetVMPlacementGroupName(ctx, ctx.Client, ctx.Machine, ctx.Cluster)
@@ -250,6 +270,9 @@ func recordOrClearError(ctx *context.MachineContext, key string, record bool) {
 		return
 	} else if strings.Contains(key, clusterInsufficientStorageKey) {
 		recordElfClusterStorageInsufficient(ctx, record)
+		return
+	} else if strings.Contains(key, clusterConnectionKey) {
+		recordElfClusterConnectionError(ctx, isUnmet)
 		return
 	}
 

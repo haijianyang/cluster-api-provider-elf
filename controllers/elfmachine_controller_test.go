@@ -3294,6 +3294,23 @@ var _ = Describe("ElfMachineReconciler", func() {
 			Expect(msg).To(ContainSubstring("Insufficient storage detected for the ELF cluster"))
 			Expect(err).ShouldNot(HaveOccurred())
 
+            resetMemoryCache()
+			logBuffer.Reset()
+			errorMessage := "Operation is forbidden because cluster connection status is not connect"
+			task.ErrorMessage = service.TowerString(errorMessage)
+			task.ErrorCode = service.TowerString(service.ElfClusterConnectionError)
+			ok, err = reconciler.reconcileVMTask(machineContext, nil)
+			Expect(ok).Should(BeTrue())
+			Expect(err.Error()).To(ContainSubstring(errorMessage))
+			Expect(elfMachine.Status.TaskRef).To(Equal(""))
+			Expect(logBuffer.String()).To(ContainSubstring("VM task failed"))
+
+			logBuffer.Reset()
+			ok, msg, err = isELFScheduleVMErrorRecorded(machineContext)
+			Expect(ok).To(BeTrue())
+			Expect(msg).To(ContainSubstring("Connection status error detected for the ELF cluster"))
+			Expect(err).ShouldNot(HaveOccurred())
+
 			// Start VM
 			task.Status = models.NewTaskStatus(models.TaskStatusSUCCESSED)
 			task.Description = service.TowerString("Start VM")

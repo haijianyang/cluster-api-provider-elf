@@ -959,6 +959,7 @@ func (r *ElfMachineReconciler) reconcileVMTask(ctx *context.MachineContext, vm *
 // reconcileVMFailedTask handles failed virtual machine tasks.
 func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext, task *models.Task, taskRef, vmRef string) error {
 	errorMessage := service.GetTowerString(task.ErrorMessage)
+	errorCode := service.GetTowerString(task.ErrorCode)
 	if service.IsGPUAssignFailed(errorMessage) {
 		errorMessage = service.ParseGPUAssignFailed(errorMessage)
 	}
@@ -969,11 +970,15 @@ func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext
 		ctx.ElfMachine.Status.FailureMessage = pointer.String(fmt.Sprintf("VM cloud-init config error: %s", service.FormatCloudInitError(errorMessage)))
 	}
 
-	ctx.Logger.Error(errors.New("VM task failed"), "", "vmRef", vmRef, "taskRef", taskRef, "taskErrorMessage", errorMessage, "taskErrorCode", service.GetTowerString(task.ErrorCode), "taskDescription", service.GetTowerString(task.Description))
+	ctx.Logger.Error(errors.New("VM task failed"), "", "vmRef", vmRef, "taskRef", taskRef, "taskErrorMessage", errorMessage, "taskErrorCode", errorCode, "taskDescription", service.GetTowerString(task.Description))
 
 	switch {
 	case service.IsCloneVMTask(task):
 		releaseTicketForCreateVM(ctx.ElfMachine.Name)
+
+		if service.IsVMDuplicateError(errorMessage) {
+			setVMDuplicate(ctx.ElfMachine.Name)
+		}
 
 		if ctx.ElfMachine.RequiresGPUDevices() {
 			unlockGPUDevicesLockedByVM(ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name)
@@ -993,6 +998,10 @@ func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext
 		ctx.Logger.Info(message)
 
 		return errors.New(message)
+	case service.IsElfClusterConnectionError(errorCode):
+		recordElfClusterConnectionError(ctx, true)
+
+		return errors.New(errorMessage)
 	case service.IsMemoryInsufficientError(errorMessage):
 		recordElfClusterMemoryInsufficient(ctx, true)
 		message := fmt.Sprintf("Insufficient memory detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster)
