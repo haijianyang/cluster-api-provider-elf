@@ -1,0 +1,14 @@
+---
+- name: Expand root partition
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+  - name: Grow vda2
+    shell: growpart /dev/vda 2
+  - name: Resize vda2
+    shell: pvresize /dev/vda2
+  - name: Extend root
+    shell: lvextend -l+100%FREE -n /dev/mapper/rl-root
+  - name: Resize root
+    shell: resize2fs /dev/mapper/rl-root
