@@ -38,7 +38,19 @@ func (r *ElfMachineReconciler) reconcileVMResources(ctx *context.MachineContext,
 		return true, nil
 	}
 
+	if ok, err := r.updateVMResources(ctx, vm); err != nil || !ok {
+		return ok, err
+	}
+
+	if ok, err := r.restartKubelet(ctx, vm); err != nil || !ok {
+		return ok, err
+	}
+
 	if ok, err := r.reconcieVMVolume(ctx, vm, infrav1.ResourcesHotUpdatedCondition); err != nil || !ok {
+		return ok, err
+	}
+
+	if ok, err := r.expandVMRootPartition(ctx, vm); err != nil || !ok {
 		return ok, err
 	}
 
@@ -47,6 +59,19 @@ func (r *ElfMachineReconciler) reconcileVMResources(ctx *context.MachineContext,
 		ctx.Logger.Info("Waiting for node exists for host agent running", "phase", ctx.Machine.Status.Phase)
 
 		return false, nil
+	}
+
+	return true, nil
+}
+
+func (r *ElfMachineReconciler) expandVMRootPartition(ctx *context.MachineContext, vm *models.VM) (bool, error) {
+	reason := conditions.GetReason(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition)
+	if reason == "" {
+		return true, nil
+	} else if reason != infrav1.ExpandingVMDiskReason &&
+		reason != infrav1.ExpandingRootPartitionReason &&
+		reason != infrav1.ExpandingRootPartitionFailedReason {
+		return true, nil
 	}
 
 	kubeClient, err := capiremote.NewClusterClient(ctx, "", ctx.Client, client.ObjectKey{Namespace: ctx.Cluster.Namespace, Name: ctx.Cluster.Name})
@@ -126,7 +151,6 @@ func (r *ElfMachineReconciler) reconcieVMVolume(ctx *context.MachineContext, vm 
 
 		return false, r.resizeVMVolume(ctx, vmVolume, *diskSize, conditionType)
 	} else if *diskSize < *vmVolume.Size {
-		conditions.MarkTrue(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition)
 		ctx.Logger.Info(fmt.Sprintf("Current disk capacity is larger than expected, skipping expand vm volume %s/%s", *vmVolume.ID, *vmVolume.Name), "currentSize", *vmVolume.Size, "expectedSize", *diskSize)
 	}
 

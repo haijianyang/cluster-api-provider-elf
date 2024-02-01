@@ -42,10 +42,14 @@ func GetHostJob(ctx goctx.Context, c client.Client, namespace, name string) (*ag
 	return &restartKubeletJob, nil
 }
 
+func GetAddNewDiskCapacityToRootName(elfMachine *infrav1.ElfMachine) string {
+	return fmt.Sprintf("cape-expand-root-rartition-%s-%d", elfMachine.Name, elfMachine.Spec.DiskGiB)
+}
+
 func AddNewDiskCapacityToRoot(ctx goctx.Context, c client.Client, elfMachine *infrav1.ElfMachine) (*agentv1.HostOperationJob, error) {
 	agentJob := &agentv1.HostOperationJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("cape-expand-root-rartition-%s-%s", elfMachine.Name, capiutil.RandomString(6)),
+			Name:      fmt.Sprintf("cape-expand-root-rartition-%s-%d", elfMachine.Name, elfMachine.Spec.DiskGiB),
 			Namespace: elfMachine.Namespace,
 		},
 		Spec: agentv1.HostOperationJobSpec{
@@ -66,4 +70,30 @@ func AddNewDiskCapacityToRoot(ctx goctx.Context, c client.Client, elfMachine *in
 	}
 
 	return agentJob, nil
+}
+
+func RestartMachineKubelet(ctx goctx.Context, c client.Client, elfMachine *infrav1.ElfMachine) (*agentv1.HostOperationJob, error) {
+	restartKubeletJob := &agentv1.HostOperationJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("cape-restart-kubelet-%s-%s", elfMachine.Name, capiutil.RandomString(6)),
+			Namespace: elfMachine.Namespace,
+		},
+		Spec: agentv1.HostOperationJobSpec{
+			NodeName: elfMachine.Name,
+			Operation: agentv1.Operation{
+				Ansible: &agentv1.Ansible{
+					LocalPlaybook: &agentv1.YAMLText{
+						Content: tasks.RestartKubeletTask,
+					},
+				},
+				Timeout: metav1.Duration{Duration: defaultTimeout},
+			},
+		},
+	}
+
+	if err := c.Create(ctx, restartKubeletJob); err != nil {
+		return nil, err
+	}
+
+	return restartKubeletJob, nil
 }

@@ -21,3 +21,6 @@ import (
 //
 //go:embed expand_root_partition.yaml
 var ExpandRootPartitionTask string
+
+//go:embed restart_kubelet.yaml
+var RestartKubeletTask string
