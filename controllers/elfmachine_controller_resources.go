@@ -174,3 +174,91 @@ func (r *ElfMachineReconciler) resizeVMVolume(ctx *context.MachineContext, vmVol
 
 	return nil
 }
+
+func (r *ElfMachineReconciler) restartKubelet(ctx *context.MachineContext, vm *models.VM) (bool, error) {
+	reason := conditions.GetReason(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition)
+	if reason == "" {
+		return true, nil
+	} else if reason != infrav1.ExpandingVMResourcesReason &&
+		reason != infrav1.RestartingKubeletReason &&
+		reason != infrav1.RestartingKubeletFailedReason {
+		return true, nil
+	}
+
+	kubeClient, err := capiremote.NewClusterClient(ctx, "", ctx.Client, client.ObjectKey{Namespace: ctx.Cluster.Namespace, Name: ctx.Cluster.Name})
+	if err != nil {
+		return false, err
+	}
+
+	var restartKubeletJob *agentv1.HostOperationJob
+	agentJobName := annotationsutil.HostAgentJobName(ctx.ElfMachine)
+	if agentJobName != "" {
+		restartKubeletJob, err = hostagent.GetHostJob(ctx, kubeClient, ctx.ElfMachine.Namespace, agentJobName)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return false, err
+		}
+	}
+	if restartKubeletJob == nil {
+		restartKubeletJob, err = hostagent.RestartMachineKubelet(ctx, kubeClient, ctx.ElfMachine)
+		if err != nil {
+			conditions.MarkFalse(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.RestartingKubeletFailedReason, clusterv1.ConditionSeverityInfo, err.Error())
+
+			return false, err
+		}
+
+		annotationsutil.AddAnnotations(ctx.ElfMachine, map[string]string{infrav1.HostAgentJobNameAnnotation: restartKubeletJob.Name})
+
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.RestartingKubeletReason, clusterv1.ConditionSeverityInfo, "")
+
+		ctx.Logger.Info("Waiting for kubelet to be restarted", "hostAgentJob", restartKubeletJob.Name)
+
+		return false, nil
+	}
+
+	switch restartKubeletJob.Status.Phase {
+	case agentv1.PhaseSucceeded:
+		annotationsutil.RemoveAnnotation(ctx.ElfMachine, infrav1.HostAgentJobNameAnnotation)
+		conditions.MarkTrue(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition)
+		ctx.Logger.Info("Restart kubelet succeeded", "hostAgentJob", restartKubeletJob.Name)
+	case agentv1.PhaseFailed:
+		annotationsutil.RemoveAnnotation(ctx.ElfMachine, infrav1.HostAgentJobNameAnnotation)
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.RestartingKubeletFailedReason, clusterv1.ConditionSeverityWarning, restartKubeletJob.Status.FailureMessage)
+		ctx.Logger.Info("Restart kubelet failed, will try again", "hostAgentJob", restartKubeletJob.Name)
+
+		return false, nil
+	default:
+		ctx.Logger.Info("Waiting for restart kubelet job done", "jobStatus", restartKubeletJob.Status.Phase)
+
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// updateVMResources ensures that the vm CPU and memory are as expected.
+func (r *ElfMachineReconciler) updateVMResources(ctx *context.MachineContext, vm *models.VM) (bool, error) {
+	if !service.IsVMResourcesUpToDate(ctx.ElfMachine, vm) {
+		return true, nil
+	}
+
+	if ok := acquireTicketForUpdatingVM(ctx.ElfMachine.Name); !ok {
+		ctx.Logger.V(1).Info(fmt.Sprintf("The VM operation reaches rate limit, skip updating VM %s resources", ctx.ElfMachine.Status.VMRef))
+
+		return false, nil
+	}
+
+	withTaskVM, err := ctx.VMService.UpdateVM(vm, ctx.ElfMachine)
+	if err != nil {
+		conditions.MarkFalse(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMResourcesFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+
+		return false, errors.Wrapf(err, "failed to trigger update resources for VM %s", ctx)
+	}
+
+	conditions.MarkFalse(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMResourcesReason, clusterv1.ConditionSeverityInfo, "")
+
+	ctx.ElfMachine.SetTask(*withTaskVM.TaskID)
+
+	ctx.Logger.Info("Waiting for the VM to be updated resources", "vmRef", ctx.ElfMachine.Status.VMRef, "taskRef", ctx.ElfMachine.Status.TaskRef)
+
+	return false, nil
+}

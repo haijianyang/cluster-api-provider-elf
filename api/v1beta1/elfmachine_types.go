@@ -124,6 +124,10 @@ type ElfMachineStatus struct {
 	// +optional
 	GPUDevices []GPUStatus `json:"gpuDevices,omitempty"`
 
+	// Resources records the resources allocated for the machine.
+	// +optional
+	Resources VMResources `json:"resources,omitempty"`
+
 	// FailureReason will be set in the event that there is a terminal problem
 	// reconciling the Machine and will contain a succinct value suitable
 	// for machine interpretation.

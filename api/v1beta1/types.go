@@ -196,6 +196,11 @@ type GPUStatus struct {
 	Name  string `json:"name,omitempty"`
 }
 
+// VMResources records the resources allocated to the virtual machine.
+type VMResources struct {
+	Disk int32 `json:"disk,omitempty"`
+}
+
 //+kubebuilder:object:generate=false
 
 // PatchStringValue is for patching resources.
