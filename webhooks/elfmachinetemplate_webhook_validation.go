@@ -45,7 +45,7 @@ func (v *ElfMachineTemplateValidator) SetupWebhookWithManager(mgr ctrl.Manager) 
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-elfmachinetemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=elfmachinetemplates,verbs=create;update,versions=v1beta1,name=validation.elfmachinetemplate.infrastructure.x-k8s.io,admissionReviewVersions=v1
 
-// ElfMachineTemplateValidator implements a validation webhook for VSphereMachineTemplate.
+// ElfMachineTemplateValidator implements a validation webhook for ElfMachineTemplate.
 type ElfMachineTemplateValidator struct{}
 
 var _ webhook.CustomValidator = &ElfMachineTemplateValidator{}
