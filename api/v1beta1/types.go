@@ -196,6 +196,20 @@ type GPUStatus struct {
 	Name  string `json:"name,omitempty"`
 }
 
+// ResourcesStatus records the resources allocated to the virtual machine.
+type ResourcesStatus struct {
+	Disk int32 `json:"disk,omitempty"`
+}
+
+// MachineHotUpdateStatus defines the observed state of machine hot update.
+// MachineHotUpdateStatus is used in KCP and MD.
+type MachineHotUpdateStatus struct {
+	// Total number of machines are not up to date targeted by KCP/MD.
+	OutdatedReplicas int32 `json:"outdatedReplicas"`
+	// Total number of machines are updating targeted by KCP/MD.
+	UpdatingReplicas int32 `json:"updatingReplicas"`
+}
+
 //+kubebuilder:object:generate=false
 
 // PatchStringValue is for patching resources.

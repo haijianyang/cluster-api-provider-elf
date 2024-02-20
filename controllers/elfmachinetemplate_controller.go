@@ -44,6 +44,7 @@ import (
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/config"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/context"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/service"
+	annotationsutil "github.com/smartxworks/cluster-api-provider-elf/pkg/util/annotations"
 	kcputil "github.com/smartxworks/cluster-api-provider-elf/pkg/util/kcp"
 	machineutil "github.com/smartxworks/cluster-api-provider-elf/pkg/util/machine"
 	mdutil "github.com/smartxworks/cluster-api-provider-elf/pkg/util/md"
@@ -213,7 +214,27 @@ func (r *ElfMachineTemplateReconciler) reconcileCPResources(ctx *context.Machine
 	updatingResourcesElfMachines, needUpdatedResourcesElfMachines, err := selectResourcesNotUpToDateElfMachines(ctx, ctx.ElfMachineTemplate, elfMachines)
 	if err != nil {
 		return false, err
-	} else if len(updatingResourcesElfMachines) == 0 && len(needUpdatedResourcesElfMachines) == 0 {
+	}
+
+	patchHelper, err := patch.NewHelper(&kcp, r.Client)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to init patch helper for %s %s/%s", kcp.GroupVersionKind(), kcp.Namespace, kcp.Name)
+	}
+
+	defer func() {
+		if err := patchHelper.Patch(r, &kcp); err != nil {
+			ctx.Logger.Error(err, fmt.Sprintf("failed to patch KCP %s to set MachineHotUpdateStatus", kcp.Name))
+		}
+	}()
+
+	if err := annotationsutil.SetMachineHotUpdateStatus(&kcp, &infrav1.MachineHotUpdateStatus{
+		OutdatedReplicas: int32(len(needUpdatedResourcesElfMachines) + len(updatingResourcesElfMachines)),
+		UpdatingReplicas: int32(len(updatingResourcesElfMachines)),
+	}); err != nil {
+		return false, errors.Wrapf(err, "failed to set MachineHotUpdateStatus for kcp %s", kcp.Name)
+	}
+
+	if len(updatingResourcesElfMachines) == 0 && len(needUpdatedResourcesElfMachines) == 0 {
 		return true, nil
 	}
 
@@ -350,7 +371,27 @@ func (r *ElfMachineTemplateReconciler) reconcileWorkerResourcesForMD(ctx *contex
 	updatingResourcesElfMachines, needUpdatedResourcesElfMachines, err := selectResourcesNotUpToDateElfMachines(ctx, ctx.ElfMachineTemplate, elfMachines)
 	if err != nil {
 		return false, err
-	} else if len(updatingResourcesElfMachines) == 0 && len(needUpdatedResourcesElfMachines) == 0 {
+	}
+
+	patchHelper, err := patch.NewHelper(md, r.Client)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to init patch helper for %s %s/%s", md.GroupVersionKind(), md.Namespace, md.Name)
+	}
+
+	defer func() {
+		if err := patchHelper.Patch(r, md); err != nil {
+			ctx.Logger.Error(err, fmt.Sprintf("failed to patch md %s to set MachineHotUpdateStatus", md.Name))
+		}
+	}()
+
+	if err := annotationsutil.SetMachineHotUpdateStatus(md, &infrav1.MachineHotUpdateStatus{
+		OutdatedReplicas: int32(len(needUpdatedResourcesElfMachines) + len(updatingResourcesElfMachines)),
+		UpdatingReplicas: int32(len(updatingResourcesElfMachines)),
+	}); err != nil {
+		return false, errors.Wrapf(err, "failed to set MachineHotUpdateStatus for md %s", md.Name)
+	}
+
+	if len(updatingResourcesElfMachines) == 0 && len(needUpdatedResourcesElfMachines) == 0 {
 		return true, nil
 	}
 

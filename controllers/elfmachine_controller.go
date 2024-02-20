@@ -980,15 +980,24 @@ func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext
 		if ctx.ElfMachine.RequiresGPUDevices() {
 			unlockGPUDevicesLockedByVM(ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name)
 		}
+	case service.IsUpdateVMDiskTask(task, ctx.ElfMachine.Name):
+		reason := conditions.GetReason(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition)
+		if reason == infrav1.ExpandingVMDiskReason || reason == infrav1.ExpandingVMDiskFailedReason {
+			conditions.MarkFalse(ctx.ElfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskFailedReason, clusterv1.ConditionSeverityInfo, errorMessage)
+		}
 	case service.IsPowerOnVMTask(task) || service.IsUpdateVMTask(task) || service.IsVMColdMigrationTask(task):
 		if ctx.ElfMachine.RequiresGPUDevices() {
 			unlockGPUDevicesLockedByVM(ctx.ElfCluster.Spec.Cluster, ctx.ElfMachine.Name)
 		}
+	}
+
+	switch {
+	case service.IsVMDuplicateError(errorMessage):
+		setVMDuplicate(ctx.ElfMachine.Name)
 	case service.IsMemoryInsufficientError(errorMessage):
 		recordElfClusterMemoryInsufficient(ctx, true)
 		message := fmt.Sprintf("Insufficient memory detected for the ELF cluster %s", ctx.ElfCluster.Spec.Cluster)
 		ctx.Logger.Info(message)
-
 		return errors.New(message)
 	case service.IsPlacementGroupError(errorMessage):
 		if err := recordPlacementGroupPolicyNotSatisfied(ctx, true); err != nil {
@@ -996,7 +1005,6 @@ func (r *ElfMachineReconciler) reconcileVMFailedTask(ctx *context.MachineContext
 		}
 		message := "The placement group policy can not be satisfied"
 		ctx.Logger.Info(message)
-
 		return errors.New(message)
 	}
 

@@ -17,6 +17,8 @@ limitations under the License.
 package annotations
 
 import (
+	"encoding/json"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -69,6 +71,42 @@ func GetTemplateClonedFromName(o metav1.Object) string {
 	}
 
 	return annotations[clusterv1.TemplateClonedFromNameAnnotation]
+}
+
+func GetMachineHotUpdateStatus(o metav1.Object) (*infrav1.MachineHotUpdateStatus, error) {
+	annotations := o.GetAnnotations()
+	if annotations == nil {
+		return nil, nil
+	}
+
+	hotUpdateStatusAnnotation := annotations[infrav1.MachineHotUpdateStatusAnnotation]
+	if hotUpdateStatusAnnotation == "" {
+		return nil, nil
+	}
+
+	hotUpdateStatus := &infrav1.MachineHotUpdateStatus{}
+	if err := json.Unmarshal([]byte(hotUpdateStatusAnnotation), hotUpdateStatus); err != nil {
+		return nil, err
+	}
+
+	return hotUpdateStatus, nil
+}
+
+func SetMachineHotUpdateStatus(o metav1.Object, hotUpdateStatus *infrav1.MachineHotUpdateStatus) error {
+	if hotUpdateStatus.OutdatedReplicas == 0 && hotUpdateStatus.UpdatingReplicas == 0 {
+		RemoveAnnotation(o, infrav1.MachineHotUpdateStatusAnnotation)
+
+		return nil
+	}
+
+	bs, err := json.Marshal(hotUpdateStatus)
+	if err != nil {
+		return err
+	}
+
+	annotations.AddAnnotations(o, map[string]string{infrav1.MachineHotUpdateStatusAnnotation: string(bs)})
+
+	return nil
 }
 
 // AddAnnotations sets the desired annotations on the object and returns true if the annotations have changed.

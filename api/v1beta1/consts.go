@@ -43,6 +43,10 @@ const (
 
 	// HostAgentJobNameAnnotation is the annotation identifying the name of HostOperationJob.
 	HostAgentJobNameAnnotation = "cape.infrastructure.cluster.x-k8s.io/host-agent-job-name"
+
+	// MachineHotUpdateStatusAnnotation is the annotation recording the hot update status of machine.
+	// MachineHotUpdateStatusAnnotation is used in KCP and MD.
+	MachineHotUpdateStatusAnnotation = "cape.infrastructure.cluster.x-k8s.io/machine-hot-update-status"
 )
 
 // Labels.
