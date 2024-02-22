@@ -53,15 +53,6 @@ func GetCreatedBy(o metav1.Object) string {
 	return annotations[infrav1.CreatedByAnnotation]
 }
 
-func HostAgentJobName(o metav1.Object) string {
-	annotations := o.GetAnnotations()
-	if annotations == nil {
-		return ""
-	}
-
-	return annotations[infrav1.HostAgentJobNameAnnotation]
-}
-
 func GetTemplateClonedFromName(o metav1.Object) string {
 	annotations := o.GetAnnotations()
 	if annotations == nil {

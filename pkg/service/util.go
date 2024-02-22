@@ -150,6 +150,10 @@ func TowerCPUSockets(vCPU, cpuCores int32) *int32 {
 	return &cpuSockets
 }
 
+func ByteToGiB(bytes int64) int32 {
+	return int32(bytes / 1024 / 1024 / 1024)
+}
+
 func IsVMInRecycleBin(vm *models.VM) bool {
 	return vm.InRecycleBin != nil && *vm.InRecycleBin
 }
@@ -196,6 +200,10 @@ func IsPowerOnVMTask(task *models.Task) bool {
 
 func IsUpdateVMTask(task *models.Task) bool {
 	return strings.Contains(GetTowerString(task.Description), "Edit VM")
+}
+
+func IsUpdateVMDiskTask(task *models.Task, vmName string) bool {
+	return GetTowerString(task.Description) == fmt.Sprintf("Edit VM %s disk", vmName)
 }
 
 func IsVMColdMigrationTask(task *models.Task) bool {

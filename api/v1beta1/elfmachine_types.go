@@ -124,6 +124,10 @@ type ElfMachineStatus struct {
 	// +optional
 	GPUDevices []GPUStatus `json:"gpuDevices,omitempty"`
 
+	// Resources records the resources allocated for the machine.
+	// +optional
+	Resources ResourcesStatus `json:"resources,omitempty"`
+
 	// FailureReason will be set in the event that there is a terminal problem
 	// reconciling the Machine and will contain a succinct value suitable
 	// for machine interpretation.
@@ -239,6 +243,11 @@ func (m *ElfMachine) SetTask(taskID string) {
 
 func (m *ElfMachine) IsFailed() bool {
 	return m.Status.FailureReason != nil || m.Status.FailureMessage != nil
+}
+
+// IsResourcesUpToDate returns whether the machine's resources are as expected.
+func (m *ElfMachine) IsResourcesUpToDate() bool {
+	return m.Spec.DiskGiB == m.Status.Resources.Disk
 }
 
 func (m *ElfMachine) SetVMDisconnectionTimestamp(timestamp *metav1.Time) {

@@ -20,7 +20,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apitypes "k8s.io/apimachinery/pkg/types"
-	capiutil "sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1 "github.com/smartxworks/cluster-api-provider-elf/api/v1alpha1"
@@ -42,10 +41,16 @@ func GetHostJob(ctx goctx.Context, c client.Client, namespace, name string) (*ag
 	return &restartKubeletJob, nil
 }
 
-func AddNewDiskCapacityToRoot(ctx goctx.Context, c client.Client, elfMachine *infrav1.ElfMachine) (*agentv1.HostOperationJob, error) {
+// GetExpandRootPartitionJobName return the expand root partition job name.
+// The same disk expansion uses the same job name to reduce duplicate jobs.
+func GetExpandRootPartitionJobName(elfMachine *infrav1.ElfMachine) string {
+	return fmt.Sprintf("cape-expand-root-partition-%s-%d", elfMachine.Name, elfMachine.Spec.DiskGiB)
+}
+
+func ExpandRootPartition(ctx goctx.Context, c client.Client, elfMachine *infrav1.ElfMachine) (*agentv1.HostOperationJob, error) {
 	agentJob := &agentv1.HostOperationJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("cape-expand-root-rartition-%s-%s", elfMachine.Name, capiutil.RandomString(6)),
+			Name:      GetExpandRootPartitionJobName(elfMachine),
 			Namespace: elfMachine.Namespace,
 		},
 		Spec: agentv1.HostOperationJobSpec{

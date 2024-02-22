@@ -135,6 +135,12 @@ func NewTestEnvironment() *TestEnvironment {
 			return err
 		}
 
+		if err := (&webhooks.ElfMachineValidator{
+			Client: mgr.GetClient(),
+		}).SetupWebhookWithManager(mgr); err != nil {
+			return err
+		}
+
 		if err := (&webhooks.ElfMachineMutation{
 			Client: mgr.GetClient(),
 			Logger: mgr.GetLogger().WithName("ElfMachineMutation"),
