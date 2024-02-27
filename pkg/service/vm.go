@@ -101,8 +101,9 @@ type TowerVMService struct {
 
 func (svr *TowerVMService) UpdateVM(vm *models.VM, elfMachine *infrav1.ElfMachine) (*models.WithTaskVM, error) {
 	vCPU := TowerVCPU(elfMachine.Spec.NumCPUs)
-	cpuCores := TowerCPUCores(*vCPU, elfMachine.Spec.NumCoresPerSocket)
-	cpuSockets := TowerCPUSockets(*vCPU, *cpuCores)
+	cpuSockets := TowerCPUSockets(elfMachine.Spec.NumCoresPerSocket)
+	cpuCores := TowerCPUCores(*vCPU, *cpuSockets)
+	memory := TowerMemory(elfMachine.Spec.MemoryMiB)
 
 	updateVMParams := clientvm.NewUpdateVMParams()
 	updateVMParams.RequestBody = &models.VMUpdateParams{
@@ -110,6 +111,7 @@ func (svr *TowerVMService) UpdateVM(vm *models.VM, elfMachine *infrav1.ElfMachin
 			Vcpu:       vCPU,
 			CPUCores:   cpuCores,
 			CPUSockets: cpuSockets,
+			Memory:     memory,
 		},
 		Where: &models.VMWhereInput{ID: TowerString(*vm.ID)},
 	}
@@ -187,8 +189,8 @@ func (svr *TowerVMService) Clone(
 	}
 
 	vCPU := TowerVCPU(elfMachine.Spec.NumCPUs)
-	cpuCores := TowerCPUCores(*vCPU, elfMachine.Spec.NumCoresPerSocket)
-	cpuSockets := TowerCPUSockets(*vCPU, *cpuCores)
+	cpuSockets := TowerCPUSockets(elfMachine.Spec.NumCoresPerSocket)
+	cpuCores := TowerCPUCores(*vCPU, *cpuSockets)
 
 	gpuDevices := make([]*models.VMGpuOperationParams, len(gpuDeviceInfos))
 	for i := 0; i < len(gpuDeviceInfos); i++ {
@@ -1061,6 +1063,8 @@ func (svr *TowerVMService) GetGPUDevicesAllocationInfoByHostIDs(hostIDs []string
 	if err != nil {
 		return nil, err
 	}
+
+	// 过滤关机的和在回收站的。
 
 	return NewGPUVMInfosFromList(getDetailVMInfoByGpuDevicesResp.Payload), nil
 }

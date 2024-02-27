@@ -408,12 +408,12 @@ func (r *ElfMachineTemplateReconciler) preflightChecksForWorker(ctx *context.Mac
 		return false
 	}
 
-	maxUnavailable := mdutil.MaxUnavailable(*md)
-	if md.Status.UnavailableReplicas > maxUnavailable {
-		ctx.Logger.Info(fmt.Sprintf("MD unavailable replicas %d is greater than expected %d, skip updating resources", md.Status.UnavailableReplicas, maxUnavailable), "md", md.Name)
+	// maxUnavailable := mdutil.MaxUnavailable(*md)
+	// if md.Status.UnavailableReplicas > maxUnavailable {
+	// 	ctx.Logger.Info(fmt.Sprintf("MD unavailable replicas %d is greater than expected %d, skip updating resources", md.Status.UnavailableReplicas, maxUnavailable), "md", md.Name)
 
-		return false
-	}
+	// 	return false
+	// }
 
 	return true
 }
@@ -460,11 +460,18 @@ func markElfMachineToBeUpdatedResources(ctx *context.MachineTemplateContext, elf
 	}
 
 	// Ensure resources are up to date.
-	diskGiB := elfMachineTemplate.Spec.Template.Spec.DiskGiB
+	diskGiB := elfMachine.Spec.DiskGiB
 	elfMachine.Spec.DiskGiB = elfMachineTemplate.Spec.Template.Spec.DiskGiB
+	memoryMiB := elfMachine.Spec.MemoryMiB
+	elfMachine.Spec.MemoryMiB = elfMachineTemplate.Spec.Template.Spec.MemoryMiB
+	numCPUs := elfMachine.Spec.NumCPUs
+	elfMachine.Spec.NumCPUs = elfMachineTemplate.Spec.Template.Spec.NumCPUs
+	numCoresPerSocket := elfMachine.Spec.NumCoresPerSocket
+	elfMachine.Spec.NumCoresPerSocket = elfMachineTemplate.Spec.Template.Spec.NumCoresPerSocket
 	conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.WaitingForResourcesHotUpdateReason, clusterv1.ConditionSeverityInfo, "")
 
-	ctx.Logger.Info(fmt.Sprintf("Resources of ElfMachine is not up to date, marking for updating resources(disk: %d -> %d)", diskGiB, elfMachine.Spec.DiskGiB), "elfMachine", elfMachine.Name)
+	ctx.Logger.Info(fmt.Sprintf("Resources of ElfMachine is not up to date, marking for updating resources(disk: %d -> %d, memory: %d -> %d, cpu: %d -> %d, numCoresPerSocket: %d -> %d)",
+		diskGiB, elfMachine.Spec.DiskGiB, memoryMiB, elfMachine.Spec.MemoryMiB, numCPUs, elfMachine.Spec.NumCPUs, numCoresPerSocket, elfMachine.Spec.NumCoresPerSocket), "elfMachine", elfMachine.Name)
 
 	if err := patchHelper.Patch(ctx, elfMachine); err != nil {
 		return errors.Wrapf(err, "failed to patch ElfMachine %s to mark for updating resources", elfMachine.Name)
