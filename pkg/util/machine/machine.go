@@ -89,6 +89,47 @@ func GetControlPlaneElfMachinesInCluster(ctx goctx.Context, ctrlClient client.Cl
 	return machines, nil
 }
 
+func GetElfMachinesForMD(
+	ctx goctx.Context,
+	ctrlClient client.Client,
+	cluster *clusterv1.Cluster,
+	md *clusterv1.MachineDeployment) ([]*infrav1.ElfMachine, error) {
+	elfMachineList := &infrav1.ElfMachineList{}
+	labels := map[string]string{
+		clusterv1.ClusterNameLabel:           cluster.Name,
+		clusterv1.MachineDeploymentNameLabel: md.Name,
+	}
+	if err := ctrlClient.List(ctx, elfMachineList, client.InNamespace(md.Namespace), client.MatchingLabels(labels)); err != nil {
+		return nil, err
+	}
+
+	elfMachines := make([]*infrav1.ElfMachine, len(elfMachineList.Items))
+	for i := range elfMachineList.Items {
+		elfMachines[i] = &elfMachineList.Items[i]
+	}
+
+	return elfMachines, nil
+}
+
+func GetControlPlaneMachinesForCluster(ctx goctx.Context, ctrlClient client.Client, cluster *clusterv1.Cluster) ([]*clusterv1.Machine, error) {
+	ms := &clusterv1.MachineList{}
+	labels := map[string]string{
+		clusterv1.ClusterNameLabel:         cluster.Name,
+		clusterv1.MachineControlPlaneLabel: "",
+	}
+
+	if err := ctrlClient.List(ctx, ms, client.InNamespace(cluster.Namespace), client.MatchingLabels(labels)); err != nil {
+		return nil, err
+	}
+
+	machines := make([]*clusterv1.Machine, len(ms.Items))
+	for i := range ms.Items {
+		machines[i] = &ms.Items[i]
+	}
+
+	return machines, nil
+}
+
 // IsControlPlaneMachine returns true if the provided resource is
 // a member of the control plane.
 func IsControlPlaneMachine(machine metav1.Object) bool {
@@ -127,6 +168,31 @@ func IsNodeHealthyConditionUnknown(machine *clusterv1.Machine) bool {
 
 func IsMachineFailed(machine *clusterv1.Machine) bool {
 	return machine.Status.FailureReason != nil || machine.Status.FailureMessage != nil
+}
+
+func IsUpdatingElfMachineResources(elfMachine *infrav1.ElfMachine) bool {
+	if conditions.Has(elfMachine, infrav1.ResourcesHotUpdatedCondition) &&
+		conditions.IsFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition) {
+		return true
+	}
+
+	return false
+}
+
+func NeedUpdateElfMachineResources(elfMachineTemplate *infrav1.ElfMachineTemplate, elfMachine *infrav1.ElfMachine) bool {
+	return elfMachineTemplate.Spec.Template.Spec.DiskGiB > elfMachine.Spec.DiskGiB
+}
+
+// SelectFirstNElfMachines returns the specified first N elfMachines.
+func SelectFirstNElfMachines(elfMachines []*infrav1.ElfMachine, count int) []*infrav1.ElfMachine {
+	if count <= 0 {
+		return nil
+	}
+	if len(elfMachines) == 0 || count >= len(elfMachines) {
+		return elfMachines
+	}
+
+	return elfMachines[:count]
 }
 
 func ConvertProviderIDToUUID(providerID *string) string {

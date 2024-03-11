@@ -26,6 +26,7 @@ import (
 	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	agentv1 "github.com/smartxworks/cluster-api-provider-elf/api/v1alpha1"
 	infrav1 "github.com/smartxworks/cluster-api-provider-elf/api/v1beta1"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/context"
 )
@@ -48,6 +49,7 @@ func New(opts Options) (Manager, error) {
 	_ = infrav1.AddToScheme(opts.Scheme)
 	_ = bootstrapv1.AddToScheme(opts.Scheme)
 	_ = controlplanev1.AddToScheme(opts.Scheme)
+	_ = agentv1.AddToScheme(opts.Scheme)
 	// +kubebuilder:scaffold:scheme
 
 	// Build the controller manager.
