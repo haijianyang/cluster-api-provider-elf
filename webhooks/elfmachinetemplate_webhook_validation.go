@@ -19,6 +19,7 @@ package webhooks
 import (
 	goctx "context"
 	"fmt"
+	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,6 +35,8 @@ import (
 const (
 	diskCapacityCanOnlyBeGreaterThanZeroMsg = "the disk capacity can only be greater than 0"
 	diskCapacityCanOnlyBeExpanded           = "the disk capacity can only be expanded"
+	networkDeviceCannotModifyMsg            = "network device cannot be modified"
+	networkDeviceCannotReduceMsg            = "the network devices cannot be reduced"
 )
 
 func (v *ElfMachineTemplateValidator) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -81,7 +84,29 @@ func (v *ElfMachineTemplateValidator) ValidateUpdate(ctx goctx.Context, oldObj, 
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "template", "spec", "diskGiB"), elfMachineTemplate.Spec.Template.Spec.DiskGiB, diskCapacityCanOnlyBeExpanded))
 	}
 
+	if err := v.validateNetwork(&elfMachineTemplate.Spec.Template.Spec.Network, &oldElfMachineTemplate.Spec.Template.Spec.Network); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
 	return nil, aggregateObjErrors(elfMachineTemplate.GroupVersionKind().GroupKind(), elfMachineTemplate.Name, allErrs)
+}
+
+func (v *ElfMachineTemplateValidator) validateNetwork(network, oldNetwork *infrav1.NetworkSpec) *field.Error {
+	if reflect.DeepEqual(network.Devices, oldNetwork.Devices) {
+		return nil
+	}
+
+	if len(network.Devices) < len(oldNetwork.Devices) {
+		return field.Invalid(field.NewPath("spec", "template", "spec", "network", "devices"), network.Devices, networkDeviceCannotReduceMsg)
+	}
+
+	for i := 0; i < len(oldNetwork.Devices); i++ {
+		if !reflect.DeepEqual(network.Devices, oldNetwork.Devices) {
+			return field.Invalid(field.NewPath("spec", "template", "spec", "network", fmt.Sprintf("devices[%d]", i)), network.Devices[i], networkDeviceCannotModifyMsg)
+		}
+	}
+
+	return nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.

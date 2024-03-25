@@ -48,7 +48,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	infrav1 "github.com/smartxworks/cluster-api-provider-elf/api/v1beta1"
-	"github.com/smartxworks/cluster-api-provider-elf/pkg/cloudinit"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/config"
 	"github.com/smartxworks/cluster-api-provider-elf/pkg/context"
 	capeerrors "github.com/smartxworks/cluster-api-provider-elf/pkg/errors"
@@ -532,7 +531,7 @@ func (r *ElfMachineReconciler) reconcileVM(ctx *context.MachineContext) (*models
 		if bootstrapData == "" {
 			return nil, false, errors.New("bootstrapData is empty")
 		}
-		bootstrapData = cloudinit.JoinExpandRootPartitionCommandsToCloudinit(bootstrapData)
+		// bootstrapData = cloudinit.JoinExpandRootPartitionCommandsToCloudinit(bootstrapData)
 
 		if ok, message, err := isELFScheduleVMErrorRecorded(ctx); err != nil {
 			return nil, false, err

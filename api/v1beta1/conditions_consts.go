@@ -144,6 +144,24 @@ const (
 	// detecting an error while adding new disk capacity to root directory; those kind of errors are
 	// usually transient and failed updating are automatically re-tried by the controller.
 	ExpandingRootPartitionFailedReason = "ExpandingRootPartitionFailed"
+
+	// AddingVMNetworkDeviceReason documents (Severity=Info) ElfMachine currently executing the adding
+	// a new network device operation.
+	AddingVMNetworkDeviceReason = "AddinggVMNetworkDevice"
+
+	// AddingVMNetworkDeviceFailedReason (Severity=Warning) documents an ElfMachine controller detecting
+	// an error while adding a new network device; those kind of errors are usually transient and failed updating
+	// are automatically re-tried by the controller.
+	AddingVMNetworkDeviceFailedReason = "AddinggVMNetworkDeviceFailed"
+
+	// SettingVMNetworkDeviceConfigReason documents (Severity=Info) ElfMachine currently executing the
+	// setting VM network device configuration operation.
+	SettingVMNetworkDeviceConfigReason = "SettingVMNetworkDeviceConfig"
+
+	// SettingVMNetworkDeviceConfigFailedReason (Severity=Warning) documents an ElfMachine controller
+	// detecting an error while setting VM network device configuration; those kind of errors are usually
+	// transient and failed updating are automatically re-tried by the controller.
+	SettingVMNetworkDeviceConfigFailedReason = "SettingVMNetworkDeviceConfigFailed"
 )
 
 // Conditions and Reasons related to make connections to a Tower. Can currently be used by ElfCluster and ElfMachine
