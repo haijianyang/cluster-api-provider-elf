@@ -21,3 +21,8 @@ import (
 //
 //go:embed expand_root_partition.yaml
 var ExpandRootPartitionTask string
+
+// SetNetworkDeviceConfig is the task to set network device configuration.
+//
+//go:embed set_network_device_config.yaml
+var SetNetworkDeviceConfig string

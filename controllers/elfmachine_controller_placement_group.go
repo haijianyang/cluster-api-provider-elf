@@ -383,8 +383,6 @@ func (r *ElfMachineReconciler) getPlacementGroup(ctx *context.MachineContext, pl
 //nolint:gocyclo
 func (r *ElfMachineReconciler) joinPlacementGroup(ctx *context.MachineContext, vm *models.VM) (ret bool, reterr error) {
 	if !version.IsCompatibleWithPlacementGroup(ctx.ElfMachine) {
-		ctx.Logger.V(1).Info(fmt.Sprintf("The capeVersion of ElfMachine is lower than %s, skip adding VM to the placement group", version.CAPEVersion1_2_0), "capeVersion", version.GetCAPEVersion(ctx.ElfMachine))
-
 		return true, nil
 	}
 

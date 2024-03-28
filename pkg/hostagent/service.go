@@ -16,6 +16,7 @@ package hostagent
 import (
 	goctx "context"
 	"fmt"
+	"strings"
 	"time"
 
 	agentv1 "github.com/smartxworks/host-config-agent-api/api/v1alpha1"
@@ -59,6 +60,36 @@ func ExpandRootPartition(ctx goctx.Context, c client.Client, elfMachine *infrav1
 				Ansible: &agentv1.Ansible{
 					LocalPlaybook: &agentv1.YAMLText{
 						Content: tasks.ExpandRootPartitionTask,
+					},
+				},
+				Timeout: metav1.Duration{Duration: defaultTimeout},
+			},
+		},
+	}
+
+	if err := c.Create(ctx, agentJob); err != nil {
+		return nil, err
+	}
+
+	return agentJob, nil
+}
+
+func GetSetNetworkDeviceConfigJobName(elfMachine *infrav1.ElfMachine, mac string) string {
+	return fmt.Sprintf("cape-set-network-device-config-%s-%s", elfMachine.Name, strings.ReplaceAll(mac, ":", ""))
+}
+
+func SetNetworkDeviceConfig(ctx goctx.Context, c client.Client, elfMachine *infrav1.ElfMachine, mac string) (*agentv1.HostOperationJob, error) {
+	agentJob := &agentv1.HostOperationJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetSetNetworkDeviceConfigJobName(elfMachine, mac),
+			Namespace: "default",
+		},
+		Spec: agentv1.HostOperationJobSpec{
+			NodeName: elfMachine.Name,
+			Operation: agentv1.Operation{
+				Ansible: &agentv1.Ansible{
+					LocalPlaybook: &agentv1.YAMLText{
+						Content: tasks.SetNetworkDeviceConfig,
 					},
 				},
 				Timeout: metav1.Duration{Duration: defaultTimeout},
