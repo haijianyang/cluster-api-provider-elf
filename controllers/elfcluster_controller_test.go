@@ -144,8 +144,8 @@ var _ = Describe("ElfClusterReconciler", func() {
 			Expect(logBuffer.String()).To(ContainSubstring("The ControlPlaneEndpoint of ElfCluster is not set"))
 			Expect(reconciler.Client.Get(ctx, capiutil.ObjectKey(elfCluster), elfCluster)).To(Succeed())
 			expectConditions(elfCluster, []conditionAssertion{
-				{clusterv1.ReadyCondition, corev1.ConditionFalse, clusterv1.ConditionSeverityInfo, infrav1.WaitingForVIPReason},
-				{infrav1.ControlPlaneEndpointReadyCondition, corev1.ConditionFalse, clusterv1.ConditionSeverityInfo, infrav1.WaitingForVIPReason},
+				{clusterv1.ReadyCondition, corev1.ConditionFalse, clusterv1.ConditionSeverityInfo, infrav1.WaitingForVIPReason, ""},
+				{infrav1.ControlPlaneEndpointReadyCondition, corev1.ConditionFalse, clusterv1.ConditionSeverityInfo, infrav1.WaitingForVIPReason, ""},
 				{conditionType: infrav1.TowerAvailableCondition, status: corev1.ConditionTrue},
 			})
 		})

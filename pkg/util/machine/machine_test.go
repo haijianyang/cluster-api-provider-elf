@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	"github.com/onsi/gomega"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 
 	infrav1 "github.com/smartxworks/cluster-api-provider-elf/api/v1beta1"
 	"github.com/smartxworks/cluster-api-provider-elf/test/fake"
@@ -229,6 +231,53 @@ func TestGetNetworkStatus(t *testing.T) {
 			g.Expect(networkStatus).To(gomega.Equal(tc.networkStatus))
 		})
 	}
+}
+
+func TestIsUpdatingElfMachineResources(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	elfCluster, cluster := fake.NewClusterObjects()
+	emt := fake.NewElfMachineTemplate()
+	elfMachine, _ := fake.NewMachineObjects(elfCluster, cluster)
+	fake.SetElfMachineTemplateForElfMachine(elfMachine, emt)
+	g.Expect(IsUpdatingElfMachineResources(elfMachine)).To(gomega.BeFalse())
+
+	conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.WaitingForResourcesHotUpdateReason, clusterv1.ConditionSeverityInfo, "")
+	g.Expect(IsUpdatingElfMachineResources(elfMachine)).To(gomega.BeTrue())
+
+	conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.WaitingForResourcesHotUpdateReason, clusterv1.ConditionSeverityInfo, "xx")
+	g.Expect(IsUpdatingElfMachineResources(elfMachine)).To(gomega.BeFalse())
+}
+
+func TestNeedUpdateElfMachineResources(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	elfCluster, cluster := fake.NewClusterObjects()
+	emt := fake.NewElfMachineTemplate()
+	elfMachine, _ := fake.NewMachineObjects(elfCluster, cluster)
+	fake.SetElfMachineTemplateForElfMachine(elfMachine, emt)
+	g.Expect(NeedUpdateElfMachineResources(emt, elfMachine)).To(gomega.BeFalse())
+
+	conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.WaitingForResourcesHotUpdateReason, clusterv1.ConditionSeverityInfo, "")
+	g.Expect(NeedUpdateElfMachineResources(emt, elfMachine)).To(gomega.BeFalse())
+
+	conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.WaitingForResourcesHotUpdateReason, clusterv1.ConditionSeverityInfo, "xx")
+	g.Expect(NeedUpdateElfMachineResources(emt, elfMachine)).To(gomega.BeTrue())
+
+	elfMachine.Spec.DiskGiB -= 1
+	g.Expect(NeedUpdateElfMachineResources(emt, elfMachine)).To(gomega.BeTrue())
+}
+
+func TestIsResourcesUpToDate(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	elfCluster, cluster := fake.NewClusterObjects()
+	emt := fake.NewElfMachineTemplate()
+	elfMachine, _ := fake.NewMachineObjects(elfCluster, cluster)
+	fake.SetElfMachineTemplateForElfMachine(elfMachine, emt)
+	g.Expect(IsResourcesUpToDate(emt, elfMachine)).To(gomega.BeTrue())
+	elfMachine.Spec.DiskGiB -= 1
+	g.Expect(IsResourcesUpToDate(emt, elfMachine)).To(gomega.BeFalse())
 }
 
 func toString(s string) *string {

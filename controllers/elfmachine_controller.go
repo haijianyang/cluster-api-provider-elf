@@ -764,12 +764,13 @@ func (r *ElfMachineReconciler) reconcileVMStatus(ctx goctx.Context, machineCtx *
 		// current disk capacity of the virtual machine is smaller than expected,
 		// expand the disk capacity first and then start it. cloud-init will
 		// add the new disk capacity to root.
-		if !(conditions.Has(machineCtx.ElfMachine, infrav1.ResourcesHotUpdatedCondition) &&
-			conditions.IsFalse(machineCtx.ElfMachine, infrav1.ResourcesHotUpdatedCondition)) {
-			if ok, err := r.reconcieVMVolume(ctx, machineCtx, vm, infrav1.VMProvisionedCondition); err != nil || !ok {
-				return ok, err
-			}
-		}
+		// 如何判断第一次启动
+		// if !(conditions.Has(machineCtx.ElfMachine, infrav1.ResourcesHotUpdatedCondition) &&
+		// 	conditions.IsFalse(machineCtx.ElfMachine, infrav1.ResourcesHotUpdatedCondition)) {
+		// 	if ok, err := r.reconcieVMVolume(ctx, machineCtx, vm, infrav1.VMProvisionedCondition); err != nil || !ok {
+		// 		return ok, err
+		// 	}
+		// }
 
 		return false, r.powerOnVM(ctx, machineCtx, vm)
 	case models.VMStatusSUSPENDED:

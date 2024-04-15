@@ -2,6 +2,7 @@ package helpers
 
 import (
 	goctx "context"
+	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
@@ -24,6 +25,8 @@ func CreateKubeConfigSecret(testEnv *TestEnvironment, namespace, clusterName str
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("######", secret.Namespace, secret.Name)
 
 	return testEnv.CreateAndWait(goctx.Background(), secret)
 }

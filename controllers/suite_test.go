@@ -25,6 +25,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -47,8 +48,9 @@ const (
 )
 
 var (
-	testEnv *helpers.TestEnvironment
-	ctx     = ctrl.SetupSignalHandler()
+	testEnv         *helpers.TestEnvironment
+	ctx             = ctrl.SetupSignalHandler()
+	unexpectedError = errors.New("unexpected error")
 )
 
 func TestControllers(t *testing.T) {
@@ -141,6 +143,7 @@ type conditionAssertion struct {
 	status        corev1.ConditionStatus
 	severity      clusterv1.ConditionSeverity
 	reason        string
+	message       string
 }
 
 func expectConditions(getter conditions.Getter, expected []conditionAssertion) {
@@ -152,5 +155,6 @@ func expectConditions(getter conditions.Getter, expected []conditionAssertion) {
 		Expect(actual.Status).To(Equal(c.status))
 		Expect(actual.Severity).To(Equal(c.severity))
 		Expect(actual.Reason).To(Equal(c.reason))
+		Expect(actual.Message).To(Equal(c.message))
 	}
 }
