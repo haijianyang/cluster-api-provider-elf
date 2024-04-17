@@ -142,10 +142,6 @@ func (r *ElfMachineTemplateReconciler) Reconcile(ctx goctx.Context, req ctrl.Req
 	}
 
 	// Handle non-deleted machines
-	return r.reconcileNormal(ctx, emtCtx)
-}
-
-func (r *ElfMachineTemplateReconciler) reconcileNormal(ctx goctx.Context, emtCtx *context.MachineTemplateContext) (reconcile.Result, error) {
 	return r.reconcileMachineResources(ctx, emtCtx)
 }
 
@@ -153,6 +149,12 @@ func (r *ElfMachineTemplateReconciler) reconcileNormal(ctx goctx.Context, emtCtx
 // virtual machines are the same as expected by ElfMachine.
 // TODO: CPU and memory will be supported in the future.
 func (r *ElfMachineTemplateReconciler) reconcileMachineResources(ctx goctx.Context, emtCtx *context.MachineTemplateContext) (reconcile.Result, error) {
+	// The disk size is 0, it means the disk size is the same as the virtual machine template.
+	// So if the capacity is 0, it means that the disk size has not changed and returns directly.
+	if emtCtx.ElfMachineTemplate.Spec.Template.Spec.DiskGiB == 0 {
+		return reconcile.Result{}, nil
+	}
+
 	if ok, err := r.reconcileCPResources(ctx, emtCtx); err != nil {
 		return reconcile.Result{}, err
 	} else if !ok {

@@ -81,6 +81,17 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("ElfMachines resources of kcp %s are up to date", klog.KObj(kcp))))
 			Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("ElfMachines resources of md %s are up to date", klog.KObj(md))))
+
+			emt.Spec.Template.Spec.DiskGiB = 0
+			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, emt, kcp, md)
+			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			emtKey = capiutil.ObjectKey(emt)
+			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
+			result, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: emtKey})
+			Expect(result).To(BeZero())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("ElfMachines resources of kcp %s are up to date", klog.KObj(kcp))))
+			Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("ElfMachines resources of md %s are up to date", klog.KObj(md))))
 		})
 	})
 
@@ -135,6 +146,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 				InfrastructureRef: corev1.ObjectReference{Namespace: emt.Namespace, Name: "notfoud"},
 			}
 			cluster.Spec.ControlPlaneRef = &corev1.ObjectReference{Namespace: kcp.Namespace, Name: kcp.Name}
+			elfMachine.Spec.DiskGiB -= 1
 			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kcp)
 			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
 			mtCtx := newMachineTemplateContext(elfCluster, cluster, emt)
@@ -177,6 +189,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			kcp.Status.UpdatedReplicas = 2
 			fake.ToControlPlaneMachine(elfMachine, kcp)
 			fake.ToControlPlaneMachine(machine, kcp)
+			elfMachine.Spec.DiskGiB -= 1
 			machine.Status.NodeRef = &corev1.ObjectReference{}
 			conditions.MarkTrue(machine, controlplanev1.MachineAPIServerPodHealthyCondition)
 			conditions.MarkTrue(machine, controlplanev1.MachineControllerManagerPodHealthyCondition)
