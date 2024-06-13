@@ -56,7 +56,7 @@ var _ = Describe("TowerCache", func() {
 			md.Name = name
 			fake.ToWorkerMachine(machine, md)
 			fake.ToWorkerMachine(elfMachine, md)
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, md)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, md)
 			machineCtx := newMachineContext(elfCluster, cluster, elfMachine, machine, nil)
 			key := getKey(ctx, machineCtx, ctrlMgrCtx.Client, name)
 
@@ -110,7 +110,7 @@ var _ = Describe("TowerCache", func() {
 			md.Name = name
 			fake.ToWorkerMachine(machine, md)
 			fake.ToWorkerMachine(elfMachine, md)
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, md)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, md)
 			machineCtx := newMachineContext(elfCluster, cluster, elfMachine, machine, nil)
 			key := getKey(ctx, machineCtx, ctrlMgrCtx.Client, name)
 
@@ -149,7 +149,7 @@ var _ = Describe("TowerCache", func() {
 		md.Name = placementGroupKey
 		fake.ToWorkerMachine(machine, md)
 		fake.ToWorkerMachine(elfMachine, md)
-		ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, md)
+		ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, md)
 		machineCtx := newMachineContext(elfCluster, cluster, elfMachine, machine, nil)
 
 		ok, msg, err := isELFScheduleVMErrorRecorded(ctx, machineCtx, ctrlMgrCtx.Client)

@@ -72,8 +72,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 				},
 			}
 			cluster.Spec.ControlPlaneRef = &corev1.ObjectReference{Namespace: kcp.Namespace, Name: kcp.Name}
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, emt, kcp, md)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, emt, kcp, md)
 			emtKey := capiutil.ObjectKey(emt)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: emtKey})
@@ -83,8 +82,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("ElfMachines resources of md %s are up to date", klog.KObj(md))))
 
 			emt.Spec.Template.Spec.DiskGiB = 0
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, emt, kcp, md)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, emt, kcp, md)
 			emtKey = capiutil.ObjectKey(emt)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			result, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: emtKey})
@@ -116,8 +114,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			emt := fake.NewElfMachineTemplate()
 			emt.OwnerReferences = append(emt.OwnerReferences, metav1.OwnerReference{Kind: fake.ClusterKind, APIVersion: clusterv1.GroupVersion.String(), Name: cluster.Name, UID: "blah"})
 			cluster.Spec.Paused = true
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, emt)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, emt)
 			emtKey := capiutil.ObjectKey(emt)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			result, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: emtKey})
@@ -147,8 +144,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			fake.ToWorkerMachine(elfMachine, md)
 			fake.ToWorkerMachine(machine, md)
 			fake.SetElfMachineTemplateForElfMachine(elfMachine, emt)
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, md)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, md)
 			mtCtx := newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err := reconciler.reconcileWorkerResources(ctx, mtCtx)
@@ -158,8 +154,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 
 			logBuffer.Reset()
 			elfMachine.Spec.DiskGiB -= 1
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, md)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, md)
 			mtCtx = newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err = reconciler.reconcileWorkerResources(ctx, mtCtx)
@@ -215,8 +210,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			}
 			cluster.Spec.ControlPlaneRef = &corev1.ObjectReference{Namespace: kcp.Namespace, Name: kcp.Name}
 			elfMachine.Spec.DiskGiB -= 1
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kcp)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kcp)
 			mtCtx := newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err := reconciler.reconcileCPResources(ctx, mtCtx)
@@ -226,8 +220,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			kcp.Spec.MachineTemplate = controlplanev1.KubeadmControlPlaneMachineTemplate{
 				InfrastructureRef: corev1.ObjectReference{Namespace: emt.Namespace, Name: emt.Name},
 			}
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kcp)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kcp)
 			mtCtx = newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err = reconciler.reconcileCPResources(ctx, mtCtx)
@@ -240,10 +233,9 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			fake.ToCPMachine(updatingMachine, kcp)
 			fake.SetElfMachineTemplateForElfMachine(updatingElfMachine, emt)
 			conditions.MarkFalse(updatingElfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.WaitingForResourcesHotUpdateReason, clusterv1.ConditionSeverityInfo, "")
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kcp,
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kcp,
 				updatingElfMachine, updatingMachine,
 			)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, updatingElfMachine, updatingMachine)
 			mtCtx = newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err = reconciler.reconcileCPResources(ctx, mtCtx)
@@ -264,8 +256,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			conditions.MarkTrue(machine, controlplanev1.MachineSchedulerPodHealthyCondition)
 			conditions.MarkTrue(machine, controlplanev1.MachineEtcdPodHealthyCondition)
 			conditions.MarkTrue(machine, controlplanev1.MachineEtcdMemberHealthyCondition)
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kcp)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kcp)
 			mtCtx = newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err = reconciler.reconcileCPResources(ctx, mtCtx)
@@ -276,8 +267,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 
 			logBuffer.Reset()
 			kcp.Status.UpdatedReplicas = 3
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kcp)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kcp)
 			mtCtx = newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err = reconciler.reconcileCPResources(ctx, mtCtx)
@@ -295,8 +285,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			kcp.Spec.Replicas = pointer.Int32(3)
 			kcp.Status.Replicas = 3
 			kcp.Status.UpdatedReplicas = 2
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			mtCtx := newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err := reconciler.preflightChecksForCP(ctx, mtCtx, kcp)
@@ -315,8 +304,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			fake.ToCPMachine(machine, kcp)
 			ctrlutil.AddFinalizer(machine, infrav1.MachineFinalizer)
 			machine.DeletionTimestamp = &metav1.Time{Time: time.Now().UTC()}
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			mtCtx := newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err := reconciler.preflightChecksForCP(ctx, mtCtx, kcp)
@@ -326,8 +314,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 
 			logBuffer.Reset()
 			machine.DeletionTimestamp = nil
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err = reconciler.preflightChecksForCP(ctx, mtCtx, kcp)
 			Expect(ok).To(BeFalse())
@@ -337,8 +324,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			logBuffer.Reset()
 			machine.Status.NodeRef = &corev1.ObjectReference{}
 			conditions.MarkFalse(machine, controlplanev1.MachineEtcdPodHealthyCondition, controlplanev1.PodInspectionFailedReason, clusterv1.ConditionSeverityInfo, "error")
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err = reconciler.preflightChecksForCP(ctx, mtCtx, kcp)
 			Expect(ok).To(BeFalse())
@@ -360,8 +346,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			conditions.MarkTrue(machine, controlplanev1.MachineSchedulerPodHealthyCondition)
 			conditions.MarkTrue(machine, controlplanev1.MachineEtcdPodHealthyCondition)
 			conditions.MarkTrue(machine, controlplanev1.MachineEtcdMemberHealthyCondition)
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			mtCtx := newMachineTemplateContext(elfCluster, cluster, emt)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok, err := reconciler.preflightChecksForCP(ctx, mtCtx, kcp)
@@ -378,8 +363,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			md.Spec.Replicas = pointer.Int32(3)
 			md.Status.Replicas = 3
 			md.Status.UpdatedReplicas = 2
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok := reconciler.preflightChecksForWorker(ctx, md, nil)
 			Expect(ok).To(BeFalse())
@@ -396,8 +380,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			md.Spec.Replicas = pointer.Int32(3)
 			md.Status.Replicas = 3
 			md.Status.UpdatedReplicas = 3
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok := reconciler.preflightChecksForWorker(ctx, md, []*infrav1.ElfMachine{elfMachine})
 			Expect(ok).To(BeFalse())
@@ -405,16 +388,14 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 
 			logBuffer.Reset()
 			md.Status.UnavailableReplicas = 3
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok = reconciler.preflightChecksForWorker(ctx, md, []*infrav1.ElfMachine{})
 			Expect(ok).To(BeFalse())
 			Expect(logBuffer.String()).To(ContainSubstring("MD unavailable replicas"))
 
 			md.Status.UnavailableReplicas = 0
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			ok = reconciler.preflightChecksForWorker(ctx, md, []*infrav1.ElfMachine{})
 			Expect(ok).To(BeTrue())
@@ -461,8 +442,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 			emt := fake.NewElfMachineTemplate()
 			fake.SetElfMachineTemplateForElfMachine(elfMachine, emt)
 			elfMachine.Spec.DiskGiB -= 1
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			err := reconciler.markElfMachinesToBeUpdatedResources(ctx, emt, []*infrav1.ElfMachine{elfMachine})
 			Expect(err).NotTo(HaveOccurred())
@@ -478,10 +458,9 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 
 	Context("markElfMachinesResourcesNotUpToDate", func() {
 		It("should mark resources not up to date", func() {
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			emt := fake.NewElfMachineTemplate()
 			fake.SetElfMachineTemplateForElfMachine(elfMachine, emt)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
 			reconciler := &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			err := reconciler.markElfMachinesResourcesNotUpToDate(ctx, emt, []*infrav1.ElfMachine{elfMachine})
 			Expect(err).NotTo(HaveOccurred())
@@ -489,8 +468,7 @@ var _ = Describe("ElfMachineTemplateReconciler", func() {
 
 			logBuffer.Reset()
 			elfMachine.Spec.DiskGiB -= 1
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			reconciler = &ElfMachineTemplateReconciler{ControllerManagerContext: ctrlMgrCtx}
 			err = reconciler.markElfMachinesResourcesNotUpToDate(ctx, emt, []*infrav1.ElfMachine{elfMachine})
 			Expect(err).NotTo(HaveOccurred())

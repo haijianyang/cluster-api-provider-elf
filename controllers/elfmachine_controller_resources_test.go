@@ -76,8 +76,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 	Context("reconcileVMResources", func() {
 		It("should reconcile when WaitingForResourcesHotUpdateReason is not empty", func() {
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.WaitingForResourcesHotUpdateReason, clusterv1.ConditionSeverityInfo, "xx")
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vm := fake.NewTowerVMFromElfMachine(elfMachine)
 			reconciler := &ElfMachineReconciler{ControllerManagerContext: ctrlMgrCtx, NewVMService: mockNewVMService}
@@ -89,8 +88,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 		It("should wait for node exists", func() {
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskReason, clusterv1.ConditionSeverityInfo, "")
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vmVolume := fake.NewVMVolume(elfMachine)
 			vmDisk := fake.NewVMDisk(vmVolume)
@@ -116,8 +114,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			machine.Status.NodeInfo = &corev1.NodeSystemInfo{}
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskReason, clusterv1.ConditionSeverityInfo, "")
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vmVolume := fake.NewVMVolume(elfMachine)
 			vmDisk := fake.NewVMDisk(vmVolume)
@@ -136,8 +133,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 	Context("reconcieVMVolume", func() {
 		It("should not reconcile when disk size is 0", func() {
 			elfMachine.Spec.DiskGiB = 0
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vmVolume := fake.NewVMVolume(elfMachine)
 			vmDisk := fake.NewVMDisk(vmVolume)
@@ -150,8 +146,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 		})
 
 		It("should not expand the disk when size is up to date", func() {
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vmVolume := fake.NewVMVolume(elfMachine)
 			vmDisk := fake.NewVMDisk(vmVolume)
@@ -168,8 +163,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 		It("should expand the disk when size is not up to date", func() {
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskReason, clusterv1.ConditionSeverityInfo, "")
 			elfMachine.Spec.DiskGiB = 20
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vmVolume := fake.NewVMVolume(elfMachine)
 			vmVolume.Size = service.TowerDisk(10)
@@ -193,8 +187,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 	Context("resizeVMVolume", func() {
 		It("should save the conditionType first", func() {
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vmVolume := fake.NewVMVolume(elfMachine)
 			reconciler := &ElfMachineReconciler{ControllerManagerContext: ctrlMgrCtx, NewVMService: mockNewVMService}
@@ -204,8 +197,6 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 			vmVolume.EntityAsyncStatus = models.NewEntityAsyncStatus(models.EntityAsyncStatusUPDATING)
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskFailedReason, clusterv1.ConditionSeverityWarning, "")
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
 			machineContext = newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			err = reconciler.resizeVMVolume(ctx, machineContext, vmVolume, 10, infrav1.ResourcesHotUpdatedCondition)
 			Expect(err).NotTo(HaveOccurred())
@@ -215,8 +206,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 		It("should wait task done", func() {
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskReason, clusterv1.ConditionSeverityInfo, "")
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			vmVolume := fake.NewVMVolume(elfMachine)
 			mockVMService.EXPECT().ResizeVMVolume(*vmVolume.ID, int64(10)).Return(nil, unexpectedError)
@@ -230,8 +220,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 			withTaskVMVolume := fake.NewWithTaskVMVolume(vmVolume, task)
 			mockVMService.EXPECT().ResizeVMVolume(*vmVolume.ID, int64(10)).Return(withTaskVMVolume, nil)
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskReason, clusterv1.ConditionSeverityInfo, "")
-			ctrlMgrCtx = fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx = fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret)
 			machineContext = newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			reconciler = &ElfMachineReconciler{ControllerManagerContext: ctrlMgrCtx, NewVMService: mockNewVMService}
 			err = reconciler.resizeVMVolume(ctx, machineContext, vmVolume, 10, infrav1.ResourcesHotUpdatedCondition)
@@ -250,8 +239,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 		})
 
 		It("should not expand root partition without ResourcesHotUpdatedCondition", func() {
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 
 			reconciler := &ElfMachineReconciler{ControllerManagerContext: ctrlMgrCtx, NewVMService: mockNewVMService}
@@ -263,8 +251,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 
 		It("should create agent job to expand root partition", func() {
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskReason, clusterv1.ConditionSeverityInfo, "")
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 
 			reconciler := &ElfMachineReconciler{ControllerManagerContext: ctrlMgrCtx, NewVMService: mockNewVMService}
@@ -286,8 +273,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 			conditions.MarkFalse(elfMachine, infrav1.ResourcesHotUpdatedCondition, infrav1.ExpandingVMDiskReason, clusterv1.ConditionSeverityInfo, "")
 			agentJob := newExpandRootPartitionJob(elfMachine)
 			Expect(testEnv.CreateAndWait(ctx, agentJob)).NotTo(HaveOccurred())
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			reconciler := &ElfMachineReconciler{ControllerManagerContext: ctrlMgrCtx, NewVMService: mockNewVMService}
 			ok, err := reconciler.expandVMRootPartition(ctx, machineContext)
@@ -329,8 +315,7 @@ var _ = Describe("ElfMachineReconciler", func() {
 			agentJobPatchSource := agentJob.DeepCopy()
 			agentJob.Status.Phase = agentv1.PhaseSucceeded
 			Expect(testEnv.PatchAndWait(ctx, agentJob, agentJobPatchSource)).To(Succeed())
-			ctrlMgrCtx := fake.NewControllerManagerContext(elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
-			fake.InitOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster, elfMachine, machine)
+			ctrlMgrCtx := fake.NewCtrlMgrCtxAndInitOwners(ctx, elfCluster, cluster, elfMachine, machine, secret, kubeConfigSecret)
 			machineContext := newMachineContext(elfCluster, cluster, elfMachine, machine, mockVMService)
 			reconciler := &ElfMachineReconciler{ControllerManagerContext: ctrlMgrCtx, NewVMService: mockNewVMService}
 			ok, err := reconciler.expandVMRootPartition(ctx, machineContext)

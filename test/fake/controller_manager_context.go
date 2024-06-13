@@ -17,6 +17,9 @@ limitations under the License.
 package fake
 
 import (
+	goctx "context"
+	"reflect"
+
 	agentv1 "github.com/smartxworks/host-config-agent-api/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	cgscheme "k8s.io/client-go/kubernetes/scheme"
@@ -71,4 +74,37 @@ func NewControllerManagerContext(initObjects ...client.Object) *context.Controll
 		LeaderElectionNamespace: LeaderElectionNamespace,
 		LeaderElectionID:        LeaderElectionID,
 	}
+}
+
+func NewCtrlMgrCtxAndInitOwners(ctx goctx.Context, initObjects ...client.Object) *context.ControllerManagerContext {
+	ctrlMgrCtx := NewControllerManagerContext(initObjects...)
+
+	var (
+		elfCluster *infrav1.ElfCluster
+		cluster    *clusterv1.Cluster
+		elfMachine *infrav1.ElfMachine
+		machine    *clusterv1.Machine
+	)
+	for i := 0; i < len(initObjects); i++ {
+		kind := reflect.TypeOf(initObjects[i]).Elem().Name()
+		switch kind {
+		case "ElfCluster":
+			elfCluster = initObjects[i].(*infrav1.ElfCluster)
+		case "Cluster":
+			cluster = initObjects[i].(*clusterv1.Cluster)
+		case "ElfMachine":
+			elfMachine = initObjects[i].(*infrav1.ElfMachine)
+		case "Machine":
+			machine = initObjects[i].(*clusterv1.Machine)
+		}
+	}
+
+	if elfCluster != nil && cluster != nil {
+		InitClusterOwnerReferences(ctx, ctrlMgrCtx, elfCluster, cluster)
+	}
+	if elfMachine != nil && machine != nil {
+		InitMachineOwnerReferences(ctx, ctrlMgrCtx, elfMachine, machine)
+	}
+
+	return ctrlMgrCtx
 }
