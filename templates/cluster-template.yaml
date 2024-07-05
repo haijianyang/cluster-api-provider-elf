@@ -150,30 +150,22 @@ spec:
               value: "6443"
             - name: vip_interface
               value: ${VIP_NETWORK_INTERFACE:="ens4"}
-            - name: vip_cidr
-              value: "32"
             - name: cp_enable
               value: "true"
             - name: cp_namespace
               value: kube-system
             - name: vip_ddns
               value: "false"
-            - name: svc_enable
-              value: "true"
-            - name: svc_leasename
-              value: plndr-svcs-lock
-            - name: svc_election
-              value: "true"
             - name: vip_leaderelection
               value: "true"
             - name: vip_leasename
               value: plndr-cp-lock
             - name: vip_leaseduration
-              value: "5"
+              value: "15"
             - name: vip_renewdeadline
-              value: "3"
+              value: "10"
             - name: vip_retryperiod
-              value: "1"
+              value: "2"
             - name: address
               value: ${CONTROL_PLANE_ENDPOINT_IP}
             - name: prometheus_server
