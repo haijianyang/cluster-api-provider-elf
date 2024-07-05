@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	clientvm "github.com/smartxworks/cloudtower-go-sdk/v2/client/vm"
 	"github.com/smartxworks/cloudtower-go-sdk/v2/models"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -572,6 +573,22 @@ func (r *ElfMachineReconciler) reconcileVM(ctx goctx.Context, machineCtx *contex
 		log.Info("Create VM for ElfMachine")
 
 		withTaskVM, err := machineCtx.VMService.Clone(machineCtx.ElfCluster, machineCtx.ElfMachine, bootstrapData, *hostID, gpuDeviceInfos)
+		if badRequest, ok := err.(*clientvm.CreateVMFromContentLibraryTemplateBadRequest); ok {
+			errorBody := badRequest.Payload
+			var fields []interface{}
+			if errorBody.Code != nil {
+				fields = append(fields, "errorCoe", *errorBody.Code)
+			}
+			if errorBody.Message != nil {
+				fields = append(fields, "errorMessage", *errorBody.Message)
+			}
+			if errorBody.Stack != nil {
+				fields = append(fields, "errorMessage", *errorBody.Stack)
+			}
+
+			log.Info("Clone error", fields...)
+		}
+
 		if err != nil {
 			releaseTicketForCreateVM(machineCtx.ElfMachine.Name)
 

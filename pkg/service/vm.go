@@ -704,6 +704,8 @@ func (svr *TowerVMService) GetVMTemplate(template string) (*models.ContentLibrar
 		return nil, errors.New(VMTemplateNotFound)
 	}
 
+	fmt.Println("*******", len(vmTemplates))
+
 	for i := 0; i < len(vmTemplates); i++ {
 		// Match SKSVMTemplateUIDLabel.
 		if template != *vmTemplates[i].ID && template != *vmTemplates[i].Name {
