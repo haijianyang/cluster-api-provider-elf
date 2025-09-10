@@ -1,0 +1,10 @@
+
+网卡配置：ifcfg-enp7s0
+Connection：System enp7s0
+
+DEVICE=enp7s0
+ONBOOT=yes
+BOOTPROTO=static
+IPADDR=192.168.23.8
+NETMASK=255.255.240.0
+GATEWAY=

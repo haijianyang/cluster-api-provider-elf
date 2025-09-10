@@ -1,0 +1,93 @@
+apiVersion: kubesmart.smtx.io/v1alpha1
+kind: HostOperationJob
+metadata:
+  name: test
+  namespace: default
+spec:
+  nodeName: net-rk-workergroup1-5m55z-kszqm
+  operation:
+    ansible:
+      localPlaybookText:
+        inline: |
+          - name: Set network device configuration
+            hosts: all
+            become: true
+            vars:
+              mac_types:
+                "52:54:00:11:4a:13": "IPV4_DHCP"
+                "52:54:00:ed:5d:da": "NONE"
+                "52:54:00:a1:31:d0": "IPV4"
+            tasks:
+            - name: Set network configuration for unconfigured nics
+              shell: |
+                set -e
+                shopt -s nullglob
+
+                declare -A mac_type_map
+                mac_type_map=(
+                {% for mac, type in mac_types.items() %}
+                  ["{{ mac }}"]="{{ type }}"
+                {% endfor %}
+                )
+
+                echo "Find NICs for MACs"
+
+                declare -A mac_nic_map
+                for i in /sys/class/net/{enp*,ens*}/address; do
+                  nic=$(basename $(dirname "$i"))
+                  mac=$(cat "$i")
+                  mac_nic_map["$mac"]="$nic"
+                done
+
+                declare -A nic_type_map
+                for mac in "${!mac_type_map[@]}"; do
+                  nic="${mac_nic_map[$mac]}"
+                  if [[ -z "$nic" ]]; then
+                    echo "Error: No NIC found for MAC $mac"
+                    exit 1
+                  fi
+
+                  echo "Find NIC for MAC: $mac, Type: ${mac_type_map[$mac]}, NIC: $nic"
+
+                  nic_type_map["$nic"]="${mac_type_map[$mac]}"
+                done
+
+                for nic in "${!nic_type_map[@]}"; do
+                  echo "Set network configuration for NIC: $nic, Type: ${nic_type_map[$nic]}"
+
+                  if [[ "${nic_type_map[$nic]}" == "NONE" || "${nic_type_map[$nic]}" == "IPV4_DHCP" ]]; then
+                    if result=$(nmcli connection delete "$nic" 2>&1); then
+                      echo "$result"
+                    elif ! echo "$result" | grep -q "unknown connection"; then
+                      echo "Error: failed to delete connection for $nic: $result"
+                      exit 1
+                    fi
+                  fi
+
+                  if [ "${nic_type_map[$nic]}" == "NONE" ]; then
+                    nmcli connection add type ethernet con-name "$nic" \
+                      ifname "$nic" \
+                      ipv4.method disabled \
+                      ipv6.method ignore
+                  elif [ "${nic_type_map[$nic]}" == "IPV4" ]; then
+                    con_name=$(nmcli -g GENERAL.CONNECTION device show "$nic")
+                    nmcli connection modify "$con_name" \
+                      ipv4.never-default yes \
+                      ipv6.never-default yes \
+                      ipv4.ignore-auto-dns yes \
+                      ipv6.ignore-auto-dns yes
+                  elif [ "${nic_type_map[$nic]}" == "IPV4_DHCP" ]; then
+                    nmcli connection add type ethernet con-name "$nic" \
+                      ifname "$nic" \
+                      ipv4.never-default yes \
+                      ipv6.never-default yes \
+                      ipv4.ignore-auto-dns yes \
+                      ipv6.ignore-auto-dns yes
+                  else
+                    echo "Error: Unknown NIC type ${nic_type_map[$nic]}"
+                    exit 1
+                  fi
+                done
+
+                echo "Set network configuration for nics done"
+    timeout: 1m0s

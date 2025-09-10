@@ -1,0 +1,541 @@
+make generate-go
+make[1]: Entering directory '/root/github/cluster-api-provider-elf'
+go generate ./...
+/root/github/cluster-api-provider-elf/bin/controller-gen \
+	paths=./api/... \
+	paths=./webhooks/... \
+	object:headerFile=./hack/boilerplate.go.txt
+make[1]: Leaving directory '/root/github/cluster-api-provider-elf'
+make generate-manifests
+make[1]: Entering directory '/root/github/cluster-api-provider-elf'
+/root/github/cluster-api-provider-elf/bin/controller-gen \
+	paths=./api/... \
+	paths=./webhooks/... \
+	crd:crdVersions=v1 \
+	output:crd:dir=./config/crd/bases \
+	webhook
+/root/github/cluster-api-provider-elf/bin/controller-gen \
+	paths=./controllers/... \
+	output:rbac:dir=./config/rbac \
+	rbac:roleName=manager-role
+make[1]: Leaving directory '/root/github/cluster-api-provider-elf'
+source ./hack/fetch_ext_bins.sh; fetch_tools; setup_envs; go test -v ./api/... ./webhooks/... ./controllers/... ./pkg/... -coverprofile=cover.out
+[1;33msetting up kubebuilder-tools@1.30.0 env vars[0m
+	github.com/smartxworks/cluster-api-provider-elf/api/v1beta1		coverage: 0.0% of statements
+=== RUN   TestElfMachineMutation
+=== RUN   TestElfMachineMutation/should_set_CAPE_version_and_numCoresPerSocket
+=== RUN   TestElfMachineMutation/should_set_NumCoresPerSocket_from_elfMachineTemplate
+--- PASS: TestElfMachineMutation (0.00s)
+    --- PASS: TestElfMachineMutation/should_set_CAPE_version_and_numCoresPerSocket (0.00s)
+    --- PASS: TestElfMachineMutation/should_set_NumCoresPerSocket_from_elfMachineTemplate (0.00s)
+=== RUN   TestElfMachineValidatorValidateUpdate
+=== RUN   TestElfMachineValidatorValidateUpdate/Cannot_reduce_disk_capacity
+=== RUN   TestElfMachineValidatorValidateUpdate/Cannot_reduce_vcpu_capacity
+=== RUN   TestElfMachineValidatorValidateUpdate/Cannot_reduce_memory_capacity
+=== RUN   TestElfMachineValidatorValidateUpdate/Can_update_the_default_numCoresPerSocket
+=== RUN   TestElfMachineValidatorValidateUpdate/Cannot_update_numCoresPerSocket
+=== RUN   TestElfMachineValidatorValidateUpdate/Disk_cannot_be_modified_directly
+=== RUN   TestElfMachineValidatorValidateUpdate/vcpu_cannot_be_modified_directly
+=== RUN   TestElfMachineValidatorValidateUpdate/memory_cannot_be_modified_directly
+--- PASS: TestElfMachineValidatorValidateUpdate (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/Cannot_reduce_disk_capacity (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/Cannot_reduce_vcpu_capacity (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/Cannot_reduce_memory_capacity (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/Can_update_the_default_numCoresPerSocket (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/Cannot_update_numCoresPerSocket (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/Disk_cannot_be_modified_directly (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/vcpu_cannot_be_modified_directly (0.00s)
+    --- PASS: TestElfMachineValidatorValidateUpdate/memory_cannot_be_modified_directly (0.00s)
+=== RUN   TestElfMachineMutationTemplate
+=== RUN   TestElfMachineMutationTemplate/should_set_default_values_for_network_devices
+=== RUN   TestElfMachineMutationTemplate/should_set_default_values_for_numCoresPerSocket
+--- PASS: TestElfMachineMutationTemplate (0.00s)
+    --- PASS: TestElfMachineMutationTemplate/should_set_default_values_for_network_devices (0.00s)
+    --- PASS: TestElfMachineMutationTemplate/should_set_default_values_for_numCoresPerSocket (0.00s)
+=== RUN   TestElfMachineTemplateValidatorValidateCreate
+=== RUN   TestElfMachineTemplateValidatorValidateCreate/disk_capacity_cannot_be_less_than_0
+=== RUN   TestElfMachineTemplateValidatorValidateCreate/disk_capacity_can_be_0
+=== RUN   TestElfMachineTemplateValidatorValidateCreate/disk_capacity_can_>_0
+=== RUN   TestElfMachineTemplateValidatorValidateCreate/memory_cannot_be_less_than_0
+=== RUN   TestElfMachineTemplateValidatorValidateCreate/numCPUs_cannot_be_less_than_0
+=== RUN   TestElfMachineTemplateValidatorValidateCreate/numCoresPerSocket_cannot_be_less_than_0
+--- PASS: TestElfMachineTemplateValidatorValidateCreate (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateCreate/disk_capacity_cannot_be_less_than_0 (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateCreate/disk_capacity_can_be_0 (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateCreate/disk_capacity_can_>_0 (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateCreate/memory_cannot_be_less_than_0 (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateCreate/numCPUs_cannot_be_less_than_0 (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateCreate/numCoresPerSocket_cannot_be_less_than_0 (0.00s)
+=== RUN   TestElfMachineTemplateValidatorValidateUpdate
+=== RUN   TestElfMachineTemplateValidatorValidateUpdate/Can_add_new_network_device
+=== RUN   TestElfMachineTemplateValidatorValidateUpdate/Cannot_modify_network_device
+=== RUN   TestElfMachineTemplateValidatorValidateUpdate/Cannot_reduce_network_device
+--- PASS: TestElfMachineTemplateValidatorValidateUpdate (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateUpdate/Can_add_new_network_device (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateUpdate/Cannot_modify_network_device (0.00s)
+    --- PASS: TestElfMachineTemplateValidatorValidateUpdate/Cannot_reduce_network_device (0.00s)
+PASS
+coverage: 75.4% of statements
+ok  	github.com/smartxworks/cluster-api-provider-elf/webhooks	0.076s	coverage: 75.4% of statements
+?   	github.com/smartxworks/cluster-api-provider-elf/pkg/config	[no test files]
+?   	github.com/smartxworks/cluster-api-provider-elf/pkg/constants	[no test files]
+?   	github.com/smartxworks/cluster-api-provider-elf/pkg/errors	[no test files]
+	github.com/smartxworks/cluster-api-provider-elf/pkg/hostagent		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/manager		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/resources		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/product		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/context		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/util/kcp		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/service/mock_services		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/util		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/util/annotations		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/util/patch		coverage: 0.0% of statements
+	github.com/smartxworks/cluster-api-provider-elf/pkg/version		coverage: 0.0% of statements
+  I0911 01:01:16.201234  157335 server.go:248] "starting control plane" logger="controller-runtime.test-env"
+  I0911 01:01:20.331221  157335 round_trippers.go:553] GET https://127.0.0.1:38443/api/v1 200 OK in 5 milliseconds
+  I0911 01:01:20.335496  157335 round_trippers.go:553] GET https://127.0.0.1:38443/api/v1/namespaces/default 200 OK in 2 milliseconds
+  I0911 01:01:20.337690  157335 server.go:285] "installing CRDs" logger="controller-runtime.test-env"
+  I0911 01:01:20.337846  157335 crd.go:318] "reading CRDs from path" logger="controller-runtime.test-env" path="/root/go/pkg/mod/sigs.k8s.io/cluster-api@v1.9.9/controlplane/kubeadm/config/crd/bases"
+  I0911 01:01:20.379807  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="controlplane.cluster.x-k8s.io_kubeadmcontrolplanes.yaml"
+  I0911 01:01:20.399061  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="controlplane.cluster.x-k8s.io_kubeadmcontrolplanetemplates.yaml"
+  I0911 01:01:20.399320  157335 crd.go:318] "reading CRDs from path" logger="controller-runtime.test-env" path="/root/github/cluster-api-provider-elf/test/config/host-agent"
+  I0911 01:01:20.400393  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="kubesmart.smtx.io_hostconfigs.yaml"
+  I0911 01:01:20.401485  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="kubesmart.smtx.io_hostoperationjobs.yaml"
+  I0911 01:01:20.401620  157335 crd.go:318] "reading CRDs from path" logger="controller-runtime.test-env" path="/root/github/cluster-api-provider-elf/config/crd/bases"
+  I0911 01:01:20.402697  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="infrastructure.cluster.x-k8s.io_elfclusters.yaml"
+  I0911 01:01:20.406034  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="infrastructure.cluster.x-k8s.io_elfmachines.yaml"
+  I0911 01:01:20.407499  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="infrastructure.cluster.x-k8s.io_elfmachinetemplates.yaml"
+  I0911 01:01:20.408437  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="kubesmart.smtx.io_hostconfigs.yaml"
+  I0911 01:01:20.409497  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="kubesmart.smtx.io_hostoperationjobs.yaml"
+  I0911 01:01:20.409580  157335 crd.go:328] "there are more than one CRD definitions with the same <Group, Version, Kind, Name>" logger="controller-runtime.test-env" GVKN={"GVK":{"Group":"apiextensions.k8s.io","Version":"v1","Kind":"CustomResourceDefinition"},"Name":"hostconfigs.kubesmart.smtx.io"}
+  I0911 01:01:20.409602  157335 crd.go:328] "there are more than one CRD definitions with the same <Group, Version, Kind, Name>" logger="controller-runtime.test-env" GVKN={"GVK":{"Group":"apiextensions.k8s.io","Version":"v1","Kind":"CustomResourceDefinition"},"Name":"hostoperationjobs.kubesmart.smtx.io"}
+  I0911 01:01:20.409726  157335 crd.go:318] "reading CRDs from path" logger="controller-runtime.test-env" path="/root/go/pkg/mod/sigs.k8s.io/cluster-api@v1.9.9/config/crd/bases"
+  I0911 01:01:20.414730  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="addons.cluster.x-k8s.io_clusterresourcesetbindings.yaml"
+  I0911 01:01:20.418118  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="addons.cluster.x-k8s.io_clusterresourcesets.yaml"
+  I0911 01:01:20.432773  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_clusterclasses.yaml"
+  I0911 01:01:20.444682  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_clusters.yaml"
+  I0911 01:01:20.455443  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_machinedeployments.yaml"
+  I0911 01:01:20.457253  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_machinedrainrules.yaml"
+  I0911 01:01:20.461539  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_machinehealthchecks.yaml"
+  I0911 01:01:20.470765  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_machinepools.yaml"
+  I0911 01:01:20.479668  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_machines.yaml"
+  I0911 01:01:20.492681  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="cluster.x-k8s.io_machinesets.yaml"
+  I0911 01:01:20.495092  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="ipam.cluster.x-k8s.io_ipaddressclaims.yaml"
+  I0911 01:01:20.496944  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="ipam.cluster.x-k8s.io_ipaddresses.yaml"
+  I0911 01:01:20.499135  157335 crd.go:436] "read CRDs from file" logger="controller-runtime.test-env" file="runtime.cluster.x-k8s.io_extensionconfigs.yaml"
+  I0911 01:01:20.520939  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="hostconfigs.kubesmart.smtx.io"
+  I0911 01:01:20.524279  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1 200 OK in 1 milliseconds
+  I0911 01:01:20.526970  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/hostconfigs.kubesmart.smtx.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.534879  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 7 milliseconds
+  I0911 01:01:20.535881  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="hostoperationjobs.kubesmart.smtx.io"
+  I0911 01:01:20.538645  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/hostoperationjobs.kubesmart.smtx.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.551194  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 11 milliseconds
+  I0911 01:01:20.551720  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="machinesets.cluster.x-k8s.io"
+  I0911 01:01:20.554589  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/machinesets.cluster.x-k8s.io 404 Not Found in 1 milliseconds
+  I0911 01:01:20.586302  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 30 milliseconds
+  I0911 01:01:20.589327  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="ipaddresses.ipam.cluster.x-k8s.io"
+  I0911 01:01:20.592423  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/ipaddresses.ipam.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.602902  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 10 milliseconds
+  I0911 01:01:20.611090  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="extensionconfigs.runtime.cluster.x-k8s.io"
+  I0911 01:01:20.613402  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/extensionconfigs.runtime.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.625512  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 11 milliseconds
+  I0911 01:01:20.628990  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="elfmachines.infrastructure.cluster.x-k8s.io"
+  I0911 01:01:20.634071  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/elfmachines.infrastructure.cluster.x-k8s.io 404 Not Found in 4 milliseconds
+  I0911 01:01:20.646966  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 11 milliseconds
+  I0911 01:01:20.648966  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="elfmachinetemplates.infrastructure.cluster.x-k8s.io"
+  I0911 01:01:20.652260  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/elfmachinetemplates.infrastructure.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.660704  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 7 milliseconds
+  I0911 01:01:20.661572  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="clusterclasses.cluster.x-k8s.io"
+  I0911 01:01:20.666885  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/clusterclasses.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.719881  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 49 milliseconds
+  I0911 01:01:20.732031  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="clusters.cluster.x-k8s.io"
+  I0911 01:01:20.745935  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/clusters.cluster.x-k8s.io 404 Not Found in 9 milliseconds
+  I0911 01:01:20.779787  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 32 milliseconds
+  I0911 01:01:20.783166  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="machinedeployments.cluster.x-k8s.io"
+  I0911 01:01:20.788008  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/machinedeployments.cluster.x-k8s.io 404 Not Found in 4 milliseconds
+  I0911 01:01:20.810910  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 21 milliseconds
+  I0911 01:01:20.814206  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="machinehealthchecks.cluster.x-k8s.io"
+  I0911 01:01:20.817626  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/machinehealthchecks.cluster.x-k8s.io 404 Not Found in 3 milliseconds
+  I0911 01:01:20.831334  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 12 milliseconds
+  I0911 01:01:20.833796  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="elfclusters.infrastructure.cluster.x-k8s.io"
+  I0911 01:01:20.840367  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/elfclusters.infrastructure.cluster.x-k8s.io 404 Not Found in 6 milliseconds
+  I0911 01:01:20.848163  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 7 milliseconds
+  I0911 01:01:20.849110  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="clusterresourcesetbindings.addons.cluster.x-k8s.io"
+  I0911 01:01:20.852004  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/clusterresourcesetbindings.addons.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.873537  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 19 milliseconds
+  I0911 01:01:20.874578  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="clusterresourcesets.addons.cluster.x-k8s.io"
+  I0911 01:01:20.878194  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/clusterresourcesets.addons.cluster.x-k8s.io 404 Not Found in 3 milliseconds
+  I0911 01:01:20.889491  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 10 milliseconds
+  I0911 01:01:20.890933  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="ipaddressclaims.ipam.cluster.x-k8s.io"
+  I0911 01:01:20.893432  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/ipaddressclaims.ipam.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.913715  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 19 milliseconds
+  I0911 01:01:20.914725  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="kubeadmcontrolplanes.controlplane.cluster.x-k8s.io"
+  I0911 01:01:20.918231  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/kubeadmcontrolplanes.controlplane.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:20.985925  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 64 milliseconds
+  I0911 01:01:20.994861  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="kubeadmcontrolplanetemplates.controlplane.cluster.x-k8s.io"
+  I0911 01:01:20.998477  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/kubeadmcontrolplanetemplates.controlplane.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:21.057671  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 56 milliseconds
+  I0911 01:01:21.062249  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="machinedrainrules.cluster.x-k8s.io"
+  I0911 01:01:21.066694  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/machinedrainrules.cluster.x-k8s.io 404 Not Found in 4 milliseconds
+  I0911 01:01:21.074579  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 7 milliseconds
+  I0911 01:01:21.075463  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="machinepools.cluster.x-k8s.io"
+  I0911 01:01:21.078155  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/machinepools.cluster.x-k8s.io 404 Not Found in 2 milliseconds
+  I0911 01:01:21.094240  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 14 milliseconds
+  I0911 01:01:21.097352  157335 crd.go:255] "installing CRD" logger="controller-runtime.test-env" crd="machines.cluster.x-k8s.io"
+  I0911 01:01:21.104790  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/machines.cluster.x-k8s.io 404 Not Found in 6 milliseconds
+  I0911 01:01:21.121173  157335 round_trippers.go:553] POST https://127.0.0.1:38443/apis/apiextensions.k8s.io/v1/customresourcedefinitions 201 Created in 15 milliseconds
+  I0911 01:01:21.123838  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="kubesmart.smtx.io/v1alpha1"
+  I0911 01:01:21.123897  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="kubesmart.smtx.io/v1alpha1"
+  I0911 01:01:21.123917  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.123933  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="ipam.cluster.x-k8s.io/v1alpha1"
+  I0911 01:01:21.123949  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="ipam.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.123965  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="runtime.cluster.x-k8s.io/v1alpha1"
+  I0911 01:01:21.123978  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="infrastructure.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124008  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="infrastructure.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124018  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124026  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124037  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124047  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124058  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="infrastructure.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124067  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="addons.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124079  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="addons.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124090  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="ipam.cluster.x-k8s.io/v1alpha1"
+  I0911 01:01:21.124099  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="ipam.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124109  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="controlplane.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124121  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="controlplane.cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124131  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124142  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.124152  157335 crd.go:157] "adding API in waitlist" logger="controller-runtime.test-env" GV="cluster.x-k8s.io/v1beta1"
+  I0911 01:01:21.125328  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/addons.cluster.x-k8s.io/v1beta1 200 OK in 1 milliseconds
+  I0911 01:01:21.126765  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/controlplane.cluster.x-k8s.io/v1beta1 404 Not Found in 0 milliseconds
+  I0911 01:01:21.127115  157335 request.go:1550] body was not decodable (unable to check for Status): couldn't get version/kind; json parse error: json: cannot unmarshal string into Go value of type struct { APIVersion string "json:\"apiVersion,omitempty\""; Kind string "json:\"kind,omitempty\"" }
+  I0911 01:01:21.225614  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/cluster.x-k8s.io/v1beta1 200 OK in 1 milliseconds
+  I0911 01:01:21.226751  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/ipam.cluster.x-k8s.io/v1alpha1 200 OK in 0 milliseconds
+  I0911 01:01:21.227852  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/ipam.cluster.x-k8s.io/v1beta1 200 OK in 0 milliseconds
+  I0911 01:01:21.229288  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/runtime.cluster.x-k8s.io/v1alpha1 200 OK in 0 milliseconds
+  I0911 01:01:21.230229  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/infrastructure.cluster.x-k8s.io/v1beta1 200 OK in 0 milliseconds
+  I0911 01:01:21.231262  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/controlplane.cluster.x-k8s.io/v1beta1 200 OK in 0 milliseconds
+  I0911 01:01:21.232214  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/kubesmart.smtx.io/v1alpha1 200 OK in 0 milliseconds
+  I0911 01:01:21.330620  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/controlplane.cluster.x-k8s.io/v1beta1 200 OK in 5 milliseconds
+  I0911 01:01:21.333833  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/cluster.x-k8s.io/v1beta1 200 OK in 2 milliseconds
+  I0911 01:01:21.426614  157335 round_trippers.go:553] GET https://127.0.0.1:38443/apis/cluster.x-k8s.io/v1beta1 200 OK in 1 milliseconds
+  I0911 01:01:21.427137  157335 server.go:299] "installing webhooks" logger="controller-runtime.test-env"
+  I0911 01:01:21.429283  157335 webhook.go:186] "skip registering a mutating webhook, object does not implement admission.Defaulter or WithDefaulter wasn't called" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachineTemplate"
+  I0911 01:01:21.429397  157335 webhook.go:202] "Registering a validating webhook" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachineTemplate" path="/validate-infrastructure-cluster-x-k8s-io-v1beta1-elfmachinetemplate"
+  I0911 01:01:21.429641  157335 server.go:183] "Registering webhook" logger="controller-runtime.webhook" path="/validate-infrastructure-cluster-x-k8s-io-v1beta1-elfmachinetemplate"
+  I0911 01:01:21.429747  157335 webhook.go:186] "skip registering a mutating webhook, object does not implement admission.Defaulter or WithDefaulter wasn't called" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachine"
+  I0911 01:01:21.429835  157335 webhook.go:202] "Registering a validating webhook" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachine" path="/validate-infrastructure-cluster-x-k8s-io-v1beta1-elfmachine"
+  I0911 01:01:21.429944  157335 server.go:183] "Registering webhook" logger="controller-runtime.webhook" path="/validate-infrastructure-cluster-x-k8s-io-v1beta1-elfmachine"
+  I0911 01:01:21.430117  157335 server.go:183] "Registering webhook" logger="controller-runtime.webhook" path="/mutate-infrastructure-cluster-x-k8s-io-v1beta1-elfmachine"
+  I0911 01:01:21.430150  157335 webhook.go:186] "skip registering a mutating webhook, object does not implement admission.Defaulter or WithDefaulter wasn't called" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachine"
+  I0911 01:01:21.430174  157335 webhook.go:225] "skip registering a validating webhook, object does not implement admission.Validator or WithValidator wasn't called" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachine"
+  I0911 01:01:21.430316  157335 server.go:183] "Registering webhook" logger="controller-runtime.webhook" path="/mutate-infrastructure-cluster-x-k8s-io-v1beta1-elfmachinetemplate"
+  I0911 01:01:21.430357  157335 webhook.go:186] "skip registering a mutating webhook, object does not implement admission.Defaulter or WithDefaulter wasn't called" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachine"
+  I0911 01:01:21.430379  157335 webhook.go:225] "skip registering a validating webhook, object does not implement admission.Validator or WithValidator wasn't called" logger="controller-runtime.builder" GVK="infrastructure.cluster.x-k8s.io/v1beta1, Kind=ElfMachine"
+Starting the manager
+  I0911 01:01:21.431170  157335 server.go:191] "Starting webhook server" logger="controller-runtime.webhook"
+  I0911 01:01:21.431501  157335 certwatcher.go:211] "Updated current TLS certificate" logger="controller-runtime.certwatcher"
+  I0911 01:01:21.431688  157335 certwatcher.go:133] "Starting certificate poll+watcher" logger="controller-runtime.certwatcher" interval="10s"
+  I0911 01:01:21.431813  157335 server.go:242] "Serving webhook server" logger="controller-runtime.webhook" host="localhost" port=42737
+  I0911 01:01:21.433619  157335 round_trippers.go:553] GET https://127.0.0.1:38443/api/v1 200 OK in 2 milliseconds
+  I0911 01:01:21.443036  157335 round_trippers.go:553] POST https://127.0.0.1:38443/api/v1/namespaces 201 Created in 8 milliseconds
+  I0911 01:01:21.443558  157335 envvar.go:172] "Feature gate default state" feature="WatchListClient" enabled=false
+  I0911 01:01:21.443594  157335 envvar.go:172] "Feature gate default state" feature="InformerResourceVersion" enabled=false
+  I0911 01:01:21.443629  157335 reflector.go:305] Starting reflector *v1.Namespace (10h31m22.18555496s) from pkg/mod/k8s.io/client-go@v0.31.3/tools/cache/reflector.go:243
+  I0911 01:01:21.443654  157335 reflector.go:341] Listing and watching *v1.Namespace from pkg/mod/k8s.io/client-go@v0.31.3/tools/cache/reflector.go:243
+  I0911 01:01:21.445794  157335 round_trippers.go:553] GET https://127.0.0.1:38443/api/v1/namespaces?limit=500&resourceVersion=0 200 OK in 1 milliseconds
+  I0911 01:01:21.446048  157335 reflector.go:368] Caches populated for *v1.Namespace from pkg/mod/k8s.io/client-go@v0.31.3/tools/cache/reflector.go:243
+  I0911 01:01:21.447803  157335 round_trippers.go:553] GET https://127.0.0.1:38443/api/v1/namespaces?resourceVersion=265&timeoutSeconds=574&watch=true 200 OK in 1 milliseconds
+  I0911 01:01:21.545989  157335 controller.go:183] "Starting Controller" controller="elfmachine" controllerGroup="infrastructure.cluster.x-k8s.io" controllerKind="ElfMachine"
+  I0911 01:01:21.546071  157335 controller.go:217] "Starting workers" controller="elfmachine" controllerGroup="infrastructure.cluster.x-k8s.io" controllerKind="ElfMachine" worker count=10
+  I0911 01:01:21.546076  157335 controller.go:175] "Starting EventSource" controller="elfcluster" controllerGroup="infrastructure.cluster.x-k8s.io" controllerKind="ElfCluster" source="kind source: *v1beta1.ElfCluster"
+  I0911 01:01:21.546120  157335 controller.go:132] "Starting EventSource" controller="elfmachine" controllerGroup="infrastructure.cluster.x-k8s.io" controllerKind="ElfMachine" source="kind source: *v1beta1.ElfMachine"
+  I0911 01:01:21.546147  157335 controller.go:132] "Starting EventSource" controller="elfmachine" controllerGroup="infrastructure.cluster.x-k8s.io" controllerKind="ElfMachine" source="kind source: *v1beta1.Machine"
+  I0911 01:01:21.546124  157335 controller.go:175] "Starting EventSource" controller="elfcluster" controllerGroup="infrastructure.cluster.x-k8s.io" controllerKind="ElfCluster" source="kind source: *v1beta1.Cluster"
+  I0911 01:01:21.546202  157335 controller.go:183] "Starting Controller" controller="elfcluster" controllerGroup="infrastructure.cluster.x-k8s.io" controllerKind="ElfCluster"
+=== RUN   TestControllers
+Running Suite: Controller Suite - /root/github/cluster-api-provider-elf/controllers
+===================================================================================
+Random Seed: [1m1757523676[0m
+
+Will run [1m164[0m of [1m164[0m specs
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:44.674238  157335 elfcluster_controller.go:290] "Warning: failed to clean orphan labels in Tower " err="unexpected error"
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:45.619163  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="failed to get bootstrap data secret default/notfound: secrets \"notfound\" not found" Machine="default/machine-dfr8c" Cluster="default/elfcluster-bqwlt" ElfCluster="default/elfcluster-bqwlt"
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:45.656155  157335 elfmachine_controller.go:592] "failed to create VM" err="some error" Machine="default/machine-5p5bx" Cluster="default/elfcluster-q6cbd" ElfCluster="default/elfcluster-q6cbd" vmRef="" taskRef=""
+E0911 01:01:45.656197  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="some error" Machine="default/machine-5p5bx" Cluster="default/elfcluster-q6cbd" ElfCluster="default/elfcluster-q6cbd"
+[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:45.791831  157335 elfmachine_controller.go:694] "the VM has been disconnected, will try to reconnect" err="VM_NOT_FOUND" Machine="default/machine-5hvc5" Cluster="default/elfcluster-bc68m" ElfCluster="default/elfcluster-bc68m" vmRef="79635727-7319-4d7d-a7ff-e0d06776a125" disconnectionTimestamp="2025-09-11T01:01:45+08:00"
+E0911 01:01:45.791882  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="VM_NOT_FOUND" Machine="default/machine-5hvc5" Cluster="default/elfcluster-bc68m" ElfCluster="default/elfcluster-bc68m"
+E0911 01:01:45.795832  157335 elfmachine_controller.go:702] "failed to get VM by UUID 79635727-7319-4d7d-a7ff-e0d06776a125 in 1m0s" err="VM_NOT_FOUND" Machine="default/machine-5hvc5" Cluster="default/elfcluster-bc68m" ElfCluster="default/elfcluster-bc68m" message="Unable to find VM by UUID 79635727-7319-4d7d-a7ff-e0d06776a125. The VM was removed from infrastructure."
+[38;5;10m•[0mE0911 01:01:45.801390  157335 elfmachine_controller.go:647] "" err="The VM 658ee061-ced7-422e-8d23-6594bea6b1ae was moved to the Tower recycle bin by users, so treat it as deleted." Machine="default/machine-g52kh" Cluster="default/elfcluster-89ssl" ElfCluster="default/elfcluster-89ssl"
+[38;5;10m•[0mE0911 01:01:45.809508  157335 elfmachine_controller.go:1009] "" err="VM task failed" Machine="default/machine-p77nh" Cluster="default/elfcluster-46rxr" ElfCluster="default/elfcluster-46rxr" vmRef="c3c15b0acb96462a9ba5895fa3447bad" taskRef="c3f1d758-c99d-4fc0-9253-aa2fe0cd7c80" taskErrorMessage="" taskErrorCode="" taskDescription=""
+E0911 01:01:45.809596  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="failed to create VM for ElfMachine default/elfmachine-x2mns: VM_NOT_FOUND" Machine="default/machine-p77nh" Cluster="default/elfcluster-46rxr" ElfCluster="default/elfcluster-46rxr"
+[38;5;10m•[0mE0911 01:01:45.817630  157335 elfmachine_controller.go:1009] "" err="VM task failed" Machine="default/machine-2h82k" Cluster="default/elfcluster-pjs8v" ElfCluster="default/elfcluster-pjs8v" vmRef="08aa6f2350cd4000b8d4fa7470b8d325" taskRef="fb940202-a07c-4b2b-8bfd-4ea3ba47d086" taskErrorMessage=<
+	Cannot unwrap Ok value of Result.Err.
+	code: CREATE_VM_FORM_TEMPLATE_FAILED
+	message: {"data":{},"ec":"VM_CLOUD_INIT_CONFIG_ERROR","error":{"msg":"[VM_CLOUD_INIT_CONFIG_ERROR]The gateway [192.168.31.215] is unreachable. "}}
+ > taskErrorCode="" taskDescription=""
+[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:45.836037  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="failed to get disks for vm 46876bd38da949928a64ea0dede284fa/elfmachine-w6clf: unexpected error" Machine="default/machine-qrzcn" Cluster="default/elfcluster-2bg6w" ElfCluster="default/elfcluster-2bg6w"
+[38;5;10m•[0mE0911 01:01:45.845750  157335 elfmachine_controller.go:1009] "" err="VM task failed" Machine="default/machine-2j47d" Cluster="default/elfcluster-99lj2" ElfCluster="default/elfcluster-99lj2" vmRef="c9760faa04834fdd88e5b158a0803d1e" taskRef="6b2264c2-e0ee-478a-aa88-dddb122665f7" taskErrorMessage="" taskErrorCode="" taskDescription=""
+[38;5;10m•[0mE0911 01:01:45.854196  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="failed to trigger power on for VM 926192ad-6001-4dc7-9d0a-cc759cba7de4: some error" Machine="default/machine-8dx9d" Cluster="default/elfcluster-4z4vq" ElfCluster="default/elfcluster-4z4vq"
+[38;5;10m•[0mE0911 01:01:45.863577  157335 elfmachine_controller.go:1009] "" err="VM task failed" Machine="default/machine-bm4sh" Cluster="default/elfcluster-gnq6w" ElfCluster="default/elfcluster-gnq6w" vmRef="5e5f4980-70f7-4dea-9c3d-24f6dcf3a71a" taskRef="0738752e-6125-4257-8db5-2e6215605cc3" taskErrorMessage="" taskErrorCode="" taskDescription=""
+[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:45.881441  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="failed to trigger powering off for VM 60316fab-ea85-4719-a9eb-78b4f767e63d: some error" Machine="default/machine-b2llv" Cluster="default/elfcluster-7s8f8" ElfCluster="default/elfcluster-7s8f8"
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:45.996046  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="some error" Machine="default/machine-2lnth" Cluster="default/elfcluster-qqhnk" ElfCluster="default/elfcluster-qqhnk"
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:46.351714  157335 elfmachine_controller.go:1009] "" err="VM task failed" Machine="default/machine-z29zj" Cluster="default/elfcluster-bsjk9" ElfCluster="default/elfcluster-bsjk9" vmRef="5d1524d0-8014-4991-97c1-464e8c74d342" taskRef="8296361a-27cb-4f02-869f-8545ed29a071" taskErrorMessage="" taskErrorCode="" taskDescription=""
+[38;5;10m•[0mE0911 01:01:46.362242  157335 elfmachine_controller.go:1009] "" err="VM task failed" Machine="default/machine-chzwt" Cluster="default/elfcluster-8xpdh" ElfCluster="default/elfcluster-8xpdh" vmRef="9e22e8c6-0e89-45ab-9d91-05249cf9af65" taskRef="2a204df1-6eda-4b7c-b3f3-ab31b07dd911" taskErrorMessage="JOB_VM_SHUTDOWN_TIMEOUT" taskErrorCode="" taskDescription=""
+[38;5;10m•[0mE0911 01:01:46.370242  157335 elfmachine_controller.go:1009] "" err="VM task failed" Machine="default/machine-zhvwg" Cluster="default/elfcluster-tm65b" ElfCluster="default/elfcluster-tm65b" vmRef="29095eb7-4793-4dfb-b982-c5da95601fe2" taskRef="f7b6180c-0528-4876-b6a7-f62e5206e257" taskErrorMessage="JOB_VM_SHUTDOWN_TIMEOUT" taskErrorCode="" taskDescription=""
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:46.790828  157335 elfmachine_controller.go:592] "failed to create VM" err="some error" Machine="default/machine-2zz57" Cluster="default/elfcluster-5xvn4" ElfCluster="default/elfcluster-5xvn4" vmRef="" taskRef=""
+E0911 01:01:46.790878  157335 elfmachine_controller.go:458] "failed to reconcile VM" err="some error" Machine="default/machine-2zz57" Cluster="default/elfcluster-5xvn4" ElfCluster="default/elfcluster-5xvn4"
+[38;5;10m•[0mE0911 01:01:46.798177  157335 elfmachine_controller.go:924] "task 927c6c0a-c0f6-4ed3-8d23-a709ba78b875 of VM  is missing" err="TASK_NOT_FOUND"
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0mE0911 01:01:46.814537  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="" taskErrorCode="" taskDescription=""
+E0911 01:01:46.814618  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="HostAvailableMemoryFilter" taskErrorCode="" taskDescription=""
+E0911 01:01:46.814680  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="PlacementGroupMustFilter" taskErrorCode="" taskDescription=""
+E0911 01:01:46.814830  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="EAllocSpace" taskErrorCode="" taskDescription=""
+E0911 01:01:46.815005  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="VM_DUPLICATED_NAME" taskErrorCode="" taskDescription="Create a VM"
+E0911 01:01:46.815052  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="VM_DUPLICATED_NAME" taskErrorCode="" taskDescription="Edit VM elfmachine-jmdxt disk"
+E0911 01:01:46.815101  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="VM_DUPLICATED_NAME" taskErrorCode="" taskDescription="Edit VM elfmachine-jmdxt disk"
+E0911 01:01:46.815146  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="VM_DUPLICATED_NAME" taskErrorCode="" taskDescription="Edit VM"
+E0911 01:01:46.815185  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="VM_DUPLICATED_NAME" taskErrorCode="" taskDescription="Edit VM"
+E0911 01:01:46.815234  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="error" taskErrorCode="" taskDescription="Create a VM"
+E0911 01:01:46.815323  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="error" taskErrorCode="" taskDescription="Start VM"
+E0911 01:01:46.815380  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="error" taskErrorCode="" taskDescription="Edit VM"
+E0911 01:01:46.815416  157335 elfmachine_controller.go:1009] "" err="VM task failed" vmRef="" taskRef="1f8ba04f-af3c-4bca-9576-61dd469f9319" taskErrorMessage="error" taskErrorCode="" taskDescription="performing a cold migration"
+[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m[38;5;10m•[0m
+
+[38;5;10m[1mRan 164 of 164 Specs in 25.424 seconds[0m
+[38;5;10m[1mSUCCESS![0m -- [38;5;10m[1m164 Passed[0m | [38;5;9m[1m0 Failed[0m | [38;5;11m[1m0 Pending[0m | [38;5;14m[1m0 Skipped[0m
+--- PASS: TestControllers (25.46s)
+PASS
+coverage: 87.3% of statements
+E0911 01:01:47.018755  157335 certwatcher.go:232] "error re-watching file" err="no such file or directory" logger="controller-runtime.certwatcher"
+E0911 01:01:47.018843  157335 certwatcher.go:240] "error re-reading certificate" err="open /tmp/envtest-serving-certs-4057425558/tls.crt: no such file or directory" logger="controller-runtime.certwatcher"
+E0911 01:01:47.018868  157335 certwatcher.go:232] "error re-watching file" err="no such file or directory" logger="controller-runtime.certwatcher"
+E0911 01:01:47.018903  157335 certwatcher.go:240] "error re-reading certificate" err="open /tmp/envtest-serving-certs-4057425558/tls.crt: no such file or directory" logger="controller-runtime.certwatcher"
+E0911 01:01:47.018933  157335 certwatcher.go:232] "error re-watching file" err="no such file or directory" logger="controller-runtime.certwatcher"
+E0911 01:01:47.018972  157335 certwatcher.go:240] "error re-reading certificate" err="open /tmp/envtest-serving-certs-4057425558/tls.crt: no such file or directory" logger="controller-runtime.certwatcher"
+E0911 01:01:47.018993  157335 certwatcher.go:232] "error re-watching file" err="no such file or directory" logger="controller-runtime.certwatcher"
+E0911 01:01:47.019025  157335 certwatcher.go:240] "error re-reading certificate" err="open /tmp/envtest-serving-certs-4057425558/tls.crt: no such file or directory" logger="controller-runtime.certwatcher"
+ok  	github.com/smartxworks/cluster-api-provider-elf/controllers	32.209s	coverage: 87.3% of statements
+=== RUN   TestHostCollection
+=== RUN   TestHostCollection/Find
+=== RUN   TestHostCollection/Available
+=== RUN   TestHostCollection/Difference
+--- PASS: TestHostCollection (0.00s)
+    --- PASS: TestHostCollection/Find (0.00s)
+    --- PASS: TestHostCollection/Available (0.00s)
+    --- PASS: TestHostCollection/Difference (0.00s)
+=== RUN   TestGPUVMInfoCollection
+=== RUN   TestGPUVMInfoCollection/Find
+--- PASS: TestGPUVMInfoCollection (0.00s)
+    --- PASS: TestGPUVMInfoCollection/Find (0.00s)
+=== RUN   TestIsAvailableHost
+=== RUN   TestIsAvailableHost/should_return_false_when_status_is_CONNECTED_ERROR/SESSION_EXPIRED/INITIALIZING
+=== RUN   TestIsAvailableHost/should_return_false_when_state_is_MAINTENANCEMODE/ENTERINGMAINTENANCEMODE
+=== RUN   TestIsAvailableHost/should_return_false_when_insufficient_memory
+--- PASS: TestIsAvailableHost (0.00s)
+    --- PASS: TestIsAvailableHost/should_return_false_when_status_is_CONNECTED_ERROR/SESSION_EXPIRED/INITIALIZING (0.00s)
+    --- PASS: TestIsAvailableHost/should_return_false_when_state_is_MAINTENANCEMODE/ENTERINGMAINTENANCEMODE (0.00s)
+    --- PASS: TestIsAvailableHost/should_return_false_when_insufficient_memory (0.00s)
+=== RUN   TestGetAvailableCountFromGPUVMInfo
+=== RUN   TestGetAvailableCountFromGPUVMInfo/GPU
+=== RUN   TestGetAvailableCountFromGPUVMInfo/vGPU
+--- PASS: TestGetAvailableCountFromGPUVMInfo (0.00s)
+    --- PASS: TestGetAvailableCountFromGPUVMInfo/GPU (0.00s)
+    --- PASS: TestGetAvailableCountFromGPUVMInfo/vGPU (0.00s)
+=== RUN   TestGetVMsOccupyingGPU
+=== RUN   TestGetVMsOccupyingGPU/should_filter_actual_allocated_vms
+--- PASS: TestGetVMsOccupyingGPU (0.00s)
+    --- PASS: TestGetVMsOccupyingGPU/should_filter_actual_allocated_vms (0.00s)
+=== RUN   TestHasGPUsCanNotBeUsedForVM
+=== RUN   TestHasGPUsCanNotBeUsedForVM/GPU
+=== RUN   TestHasGPUsCanNotBeUsedForVM/vGPU
+--- PASS: TestHasGPUsCanNotBeUsedForVM (0.00s)
+    --- PASS: TestHasGPUsCanNotBeUsedForVM/GPU (0.00s)
+    --- PASS: TestHasGPUsCanNotBeUsedForVM/vGPU (0.00s)
+=== RUN   TestParseOwnerFromCreatedByAnnotation
+=== RUN   TestParseOwnerFromCreatedByAnnotation/parseOwnerFromCreatedByAnnotation
+--- PASS: TestParseOwnerFromCreatedByAnnotation (0.00s)
+    --- PASS: TestParseOwnerFromCreatedByAnnotation/parseOwnerFromCreatedByAnnotation (0.00s)
+=== RUN   TestGetVMSystemDisk
+=== RUN   TestGetVMSystemDisk/GetVMSystemDisk
+--- PASS: TestGetVMSystemDisk (0.00s)
+    --- PASS: TestGetVMSystemDisk/GetVMSystemDisk (0.00s)
+=== RUN   TestGetHostZone
+=== RUN   TestGetHostZone/GetHostZone
+--- PASS: TestGetHostZone (0.00s)
+    --- PASS: TestGetHostZone/GetHostZone (0.00s)
+PASS
+coverage: 23.9% of statements
+ok  	github.com/smartxworks/cluster-api-provider-elf/pkg/service	0.118s	coverage: 23.9% of statements
+=== RUN   TestGetOrCreate
+=== RUN   TestGetOrCreate/should_get_cached_session_and_clear_inactive_session
+--- PASS: TestGetOrCreate (0.00s)
+    --- PASS: TestGetOrCreate/should_get_cached_session_and_clear_inactive_session (0.00s)
+PASS
+coverage: 83.0% of statements
+ok  	github.com/smartxworks/cluster-api-provider-elf/pkg/session	0.074s	coverage: 83.0% of statements
+=== RUN   TestConvertToLabelValue
+=== RUN   TestConvertToLabelValue/0
+=== RUN   TestConvertToLabelValue/1
+=== RUN   TestConvertToLabelValue/2
+=== RUN   TestConvertToLabelValue/3
+=== RUN   TestConvertToLabelValue/4
+=== RUN   TestConvertToLabelValue/5
+=== RUN   TestConvertToLabelValue/6
+=== RUN   TestConvertToLabelValue/7
+=== RUN   TestConvertToLabelValue/8
+=== RUN   TestConvertToLabelValue/9
+=== RUN   TestConvertToLabelValue/10
+--- PASS: TestConvertToLabelValue (0.00s)
+    --- PASS: TestConvertToLabelValue/0 (0.00s)
+    --- PASS: TestConvertToLabelValue/1 (0.00s)
+    --- PASS: TestConvertToLabelValue/2 (0.00s)
+    --- PASS: TestConvertToLabelValue/3 (0.00s)
+    --- PASS: TestConvertToLabelValue/4 (0.00s)
+    --- PASS: TestConvertToLabelValue/5 (0.00s)
+    --- PASS: TestConvertToLabelValue/6 (0.00s)
+    --- PASS: TestConvertToLabelValue/7 (0.00s)
+    --- PASS: TestConvertToLabelValue/8 (0.00s)
+    --- PASS: TestConvertToLabelValue/9 (0.00s)
+    --- PASS: TestConvertToLabelValue/10 (0.00s)
+PASS
+coverage: 22.9% of statements
+ok  	github.com/smartxworks/cluster-api-provider-elf/pkg/util/labels	0.099s	coverage: 22.9% of statements
+=== RUN   TestGetKCPByMachine
+=== RUN   TestGetKCPByMachine/should_return_kcp
+=== RUN   TestGetKCPByMachine/should_panic_when_failed_to_get_kcp_name
+--- PASS: TestGetKCPByMachine (0.00s)
+    --- PASS: TestGetKCPByMachine/should_return_kcp (0.00s)
+    --- PASS: TestGetKCPByMachine/should_panic_when_failed_to_get_kcp_name (0.00s)
+=== RUN   TestGetElfMachinesInCluster
+=== RUN   TestGetElfMachinesInCluster/should_return_ElfMachines
+--- PASS: TestGetElfMachinesInCluster (0.00s)
+    --- PASS: TestGetElfMachinesInCluster/should_return_ElfMachines (0.00s)
+=== RUN   TestGetControlPlaneElfMachinesInCluster
+=== RUN   TestGetControlPlaneElfMachinesInCluster/should_return_Control_Plane_ElfMachines
+--- PASS: TestGetControlPlaneElfMachinesInCluster (0.00s)
+    --- PASS: TestGetControlPlaneElfMachinesInCluster/should_return_Control_Plane_ElfMachines (0.00s)
+=== RUN   TestIsControlPlaneMachine
+=== RUN   TestIsControlPlaneMachine/CP_Machine_returns_true,_Worker_node_returns_false
+--- PASS: TestIsControlPlaneMachine (0.00s)
+    --- PASS: TestIsControlPlaneMachine/CP_Machine_returns_true,_Worker_node_returns_false (0.00s)
+=== RUN   TestGetNodeGroupName
+=== RUN   TestGetNodeGroupName/CP_Machine_returns_true,_Worker_node_returns_false
+--- PASS: TestGetNodeGroupName (0.00s)
+    --- PASS: TestGetNodeGroupName/CP_Machine_returns_true,_Worker_node_returns_false (0.00s)
+=== RUN   TestConvertProviderIDToUUID
+=== RUN   TestConvertProviderIDToUUID/nil_providerID
+=== RUN   TestConvertProviderIDToUUID/empty_providerID
+=== RUN   TestConvertProviderIDToUUID/invalid_providerID
+=== RUN   TestConvertProviderIDToUUID/missing_prefix
+=== RUN   TestConvertProviderIDToUUID/valid_providerID
+=== RUN   TestConvertProviderIDToUUID/mixed_case
+=== RUN   TestConvertProviderIDToUUID/invalid_hex_chars
+--- PASS: TestConvertProviderIDToUUID (0.00s)
+    --- PASS: TestConvertProviderIDToUUID/nil_providerID (0.00s)
+    --- PASS: TestConvertProviderIDToUUID/empty_providerID (0.00s)
+    --- PASS: TestConvertProviderIDToUUID/invalid_providerID (0.00s)
+    --- PASS: TestConvertProviderIDToUUID/missing_prefix (0.00s)
+    --- PASS: TestConvertProviderIDToUUID/valid_providerID (0.00s)
+    --- PASS: TestConvertProviderIDToUUID/mixed_case (0.00s)
+    --- PASS: TestConvertProviderIDToUUID/invalid_hex_chars (0.00s)
+=== RUN   TestConvertUUIDtoProviderID
+=== RUN   TestConvertUUIDtoProviderID/empty_uuid
+=== RUN   TestConvertUUIDtoProviderID/invalid_uuid
+=== RUN   TestConvertUUIDtoProviderID/valid_uuid
+=== RUN   TestConvertUUIDtoProviderID/mixed_case
+=== RUN   TestConvertUUIDtoProviderID/invalid_hex_chars
+--- PASS: TestConvertUUIDtoProviderID (0.00s)
+    --- PASS: TestConvertUUIDtoProviderID/empty_uuid (0.00s)
+    --- PASS: TestConvertUUIDtoProviderID/invalid_uuid (0.00s)
+    --- PASS: TestConvertUUIDtoProviderID/valid_uuid (0.00s)
+    --- PASS: TestConvertUUIDtoProviderID/mixed_case (0.00s)
+    --- PASS: TestConvertUUIDtoProviderID/invalid_hex_chars (0.00s)
+=== RUN   TestGetNetworkStatus
+=== RUN   TestGetNetworkStatus/empty
+=== RUN   TestGetNetworkStatus/local_ip
+=== RUN   TestGetNetworkStatus/169.254_prefix
+=== RUN   TestGetNetworkStatus/172.17.0_prefix
+=== RUN   TestGetNetworkStatus/valid_IP
+--- PASS: TestGetNetworkStatus (0.00s)
+    --- PASS: TestGetNetworkStatus/empty (0.00s)
+    --- PASS: TestGetNetworkStatus/local_ip (0.00s)
+    --- PASS: TestGetNetworkStatus/169.254_prefix (0.00s)
+    --- PASS: TestGetNetworkStatus/172.17.0_prefix (0.00s)
+    --- PASS: TestGetNetworkStatus/valid_IP (0.00s)
+=== RUN   TestGetElfMachinesForMD
+--- PASS: TestGetElfMachinesForMD (0.00s)
+=== RUN   TestGetControlPlaneMachinesForCluster
+--- PASS: TestGetControlPlaneMachinesForCluster (0.00s)
+=== RUN   TestGetMDByMachine
+=== RUN   TestGetMDByMachine/should_return_md
+--- PASS: TestGetMDByMachine (0.00s)
+    --- PASS: TestGetMDByMachine/should_return_md (0.00s)
+=== RUN   TestGetMDsForCluster
+=== RUN   TestGetMDsForCluster/should_return_mds
+--- PASS: TestGetMDsForCluster (0.01s)
+    --- PASS: TestGetMDsForCluster/should_return_mds (0.00s)
+PASS
+coverage: 86.2% of statements
+ok  	github.com/smartxworks/cluster-api-provider-elf/pkg/util/machine	0.104s	coverage: 86.2% of statements
+=== RUN   TestMaxUnavailable
+=== RUN   TestMaxUnavailable/maxUnavailable_less_than_replicas
+=== RUN   TestMaxUnavailable/maxUnavailable_equal_replicas
+=== RUN   TestMaxUnavailable/maxUnavailable_greater_than_replicas
+=== RUN   TestMaxUnavailable/maxUnavailable_with_replicas_is_0
+=== RUN   TestMaxUnavailable/maxUnavailable_less_than_replicas_with_percents
+=== RUN   TestMaxUnavailable/maxUnavailable_equal_replicas_with_percents
+=== RUN   TestMaxUnavailable/maxUnavailable_greater_than_replicas_with_percents
+--- PASS: TestMaxUnavailable (0.00s)
+    --- PASS: TestMaxUnavailable/maxUnavailable_less_than_replicas (0.00s)
+    --- PASS: TestMaxUnavailable/maxUnavailable_equal_replicas (0.00s)
+    --- PASS: TestMaxUnavailable/maxUnavailable_greater_than_replicas (0.00s)
+    --- PASS: TestMaxUnavailable/maxUnavailable_with_replicas_is_0 (0.00s)
+    --- PASS: TestMaxUnavailable/maxUnavailable_less_than_replicas_with_percents (0.00s)
+    --- PASS: TestMaxUnavailable/maxUnavailable_equal_replicas_with_percents (0.00s)
+    --- PASS: TestMaxUnavailable/maxUnavailable_greater_than_replicas_with_percents (0.00s)
+=== RUN   TestResolveFenceposts
+=== RUN   TestResolveFenceposts/maxSurge=0%
+=== RUN   TestResolveFenceposts/maxSurge=39%
+=== RUN   TestResolveFenceposts/maxSurge=oops
+=== RUN   TestResolveFenceposts/maxSurge=55%
+=== RUN   TestResolveFenceposts/maxSurge=5
+--- PASS: TestResolveFenceposts (0.00s)
+    --- PASS: TestResolveFenceposts/maxSurge=0% (0.00s)
+    --- PASS: TestResolveFenceposts/maxSurge=39% (0.00s)
+    --- PASS: TestResolveFenceposts/maxSurge=oops (0.00s)
+    --- PASS: TestResolveFenceposts/maxSurge=55% (0.00s)
+    --- PASS: TestResolveFenceposts/maxSurge=5 (0.00s)
+=== RUN   TestMaxSurge
+=== RUN   TestMaxSurge/maxSurge=0
+=== RUN   TestMaxSurge/maxSurge=1
+--- PASS: TestMaxSurge (0.00s)
+    --- PASS: TestMaxSurge/maxSurge=0 (0.00s)
+    --- PASS: TestMaxSurge/maxSurge=1 (0.00s)
+=== RUN   TestIsMDInRollingUpdate
+=== RUN   TestIsMDInRollingUpdate/{1_1_1_false}
+=== RUN   TestIsMDInRollingUpdate/{3_3_3_false}
+=== RUN   TestIsMDInRollingUpdate/{3_3_2_true}
+=== RUN   TestIsMDInRollingUpdate/{3_3_1_true}
+--- PASS: TestIsMDInRollingUpdate (0.00s)
+    --- PASS: TestIsMDInRollingUpdate/{1_1_1_false} (0.00s)
+    --- PASS: TestIsMDInRollingUpdate/{3_3_3_false} (0.00s)
+    --- PASS: TestIsMDInRollingUpdate/{3_3_2_true} (0.00s)
+    --- PASS: TestIsMDInRollingUpdate/{3_3_1_true} (0.00s)
+PASS
+coverage: 100.0% of statements
+ok  	github.com/smartxworks/cluster-api-provider-elf/pkg/util/md	0.021s	coverage: 100.0% of statements
+=== RUN   TestIsUUID
+=== RUN   TestIsUUID/empty_uuid
+=== RUN   TestIsUUID/invalid_uuid
+=== RUN   TestIsUUID/valid_uuid
+=== RUN   TestIsUUID/mixed_case
+=== RUN   TestIsUUID/invalid_hex_chars
+--- PASS: TestIsUUID (0.00s)
+    --- PASS: TestIsUUID/empty_uuid (0.00s)
+    --- PASS: TestIsUUID/invalid_uuid (0.00s)
+    --- PASS: TestIsUUID/valid_uuid (0.00s)
+    --- PASS: TestIsUUID/mixed_case (0.00s)
+    --- PASS: TestIsUUID/invalid_hex_chars (0.00s)
+PASS
+coverage: 100.0% of statements
+ok  	github.com/smartxworks/cluster-api-provider-elf/pkg/util/types	0.016s	coverage: 100.0% of statements
