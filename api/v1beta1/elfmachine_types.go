@@ -110,6 +110,15 @@ type ElfMachineSpec struct {
 	// Defaults to AUTO_SCHEDULE.
 	// +optional
 	Host string `json:"host,omitempty"`
+
+	// Node is the node configuration for this machine.
+	// +optional
+	Node ElfMachineNodeSpec `json:"node,omitempty"`
+}
+
+// ElfMachineNodeSpec defines the desired state of ElfMachineNode.
+type ElfMachineNodeSpec struct {
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // ElfMachineStatus defines the observed state of ElfMachine.

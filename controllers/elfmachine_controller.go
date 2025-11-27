@@ -1204,10 +1204,16 @@ func (r *ElfMachineReconciler) reconcileNode(ctx goctx.Context, machineCtx *cont
 	} else if len(machineCtx.ElfMachine.Spec.VGPUDevices) > 0 {
 		autoscalerCAPIGPULabel = labelsutil.ConvertToLabelValue(machineCtx.ElfMachine.Spec.VGPUDevices[0].Type)
 	}
+
+	autoscalerCAPIGPULabel = strings.ReplaceAll(autoscalerCAPIGPULabel, " ", "-")
 	if autoscalerCAPIGPULabel != "" {
 		expectedLabels[labelsutil.ClusterAutoscalerCAPIGPULabel] = autoscalerCAPIGPULabel
 	} else {
 		expectedLabels[labelsutil.ClusterAutoscalerCAPIGPULabel] = nil
+	}
+
+	for key, value := range machineCtx.ElfMachine.Spec.Node.Labels {
+		expectedLabels[key] = value
 	}
 
 	if node.Spec.ProviderID != "" && reflect.DeepEqual(actualLabels, expectedLabels) {

@@ -221,6 +221,14 @@ spec:
                         required:
                         - devices
                         type: object
+                      node:
+                        description: Node is the node configuration for this machine.
+                        properties:
+                          labels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        type: object
                       numCPUS:
                         description: |-
                           NumCPUs is the number of virtual processors in a VM.

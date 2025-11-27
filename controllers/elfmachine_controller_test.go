@@ -3519,7 +3519,10 @@ var _ = Describe("ElfMachineReconciler", func() {
 		})
 
 		It("should set providerID and labels for node", func() {
-			elfMachine.Spec.GPUDevices = []infrav1.GPUPassthroughDeviceSpec{{Model: "H100"}}
+			elfMachine.Spec.GPUDevices = []infrav1.GPUPassthroughDeviceSpec{{Model: "Atlas 300I Pro"}}
+			elfMachine.Spec.Node.Labels = map[string]string{
+				"masterselector": "dls-master-node",
+			}
 			elfMachine.Status.HostServerRef = fake.UUID()
 			elfMachine.Status.HostServerName = fake.UUID()
 			elfMachine.Status.Zone = infrav1.ZoneStatus{
@@ -3565,7 +3568,8 @@ var _ = Describe("ElfMachineReconciler", func() {
 					node.Labels[infrav1.ZoneTypeLabel] == elfMachine.Status.Zone.Type.ToLower() &&
 					node.Labels[infrav1.TowerVMIDLabel] == *vm.ID &&
 					node.Labels[infrav1.NodeGroupLabel] == machineutil.GetNodeGroupName(machine) &&
-					node.Labels[labelsutil.ClusterAutoscalerCAPIGPULabel] == "H100"
+					node.Labels[labelsutil.ClusterAutoscalerCAPIGPULabel] == "Atlas-300I-Pro" &&
+					node.Labels["masterselector"] == "dls-master-node"
 			}, timeout).Should(BeTrue())
 		})
 
