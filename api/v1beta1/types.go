@@ -83,13 +83,13 @@ type StorageConfig struct {
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=128
 	// +optional
-	DatastoreID string `json:"datastoreID,omitempty"`
+	DatastoreID *string `json:"datastoreID,omitempty"`
 
 	// StorageClusterID is the ID of a clustered storage resource used for VM disks.
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=128
 	// +optional
-	StorageClusterID string `json:"storageClusterID,omitempty"`
+	StorageClusterID *string `json:"storageClusterID,omitempty"`
 }
 
 type Tower struct {
@@ -329,6 +329,42 @@ type ComputeClusterStatus struct {
 
 	// Name is the name of the compute cluster.
 	Name string `json:"name,omitempty"`
+}
+
+// StorageClusterStatus is the status of a storage cluster.
+type StorageClusterStatus struct {
+	// ClusterID is the ID of the storage cluster.
+	ClusterID string `json:"clusterId,omitempty"`
+
+	// Name is the name of the storage cluster.
+	Name string `json:"name,omitempty"`
+}
+
+// String returns a string representation of this StorageClusterStatus.
+func (sc *StorageClusterStatus) String() string {
+	return fmt.Sprintf("%s:%s", sc.ClusterID, sc.Name)
+}
+
+func (sc *StorageClusterStatus) Equal(other *StorageClusterStatus) bool {
+	return sc.ClusterID == other.ClusterID && sc.Name == other.Name
+}
+
+// DataStoreStatus is the status of a datastore.
+type DataStoreStatus struct {
+	// DataStoreID is the ID of the datastore.
+	DataStoreID string `json:"dataStoreId,omitempty"`
+
+	// Name is the name of the datastore.
+	Name string `json:"name,omitempty"`
+}
+
+// String returns a string representation of this DataStoreStatus.
+func (ds *DataStoreStatus) String() string {
+	return fmt.Sprintf("%s:%s", ds.DataStoreID, ds.Name)
+}
+
+func (ds *DataStoreStatus) Equal(other *DataStoreStatus) bool {
+	return ds.DataStoreID == other.DataStoreID && ds.Name == other.Name
 }
 
 // String returns a string representation of this ComputeClusterStatus.

@@ -207,8 +207,8 @@ func (svr *TowerVMService) Clone(
 	var storageConfig *models.StorageConfig
 	if storageConfigSpec := vmInfo.StorageConfig; storageConfigSpec != nil {
 		storageConfig = &models.StorageConfig{
-			DatastoreID:      TowerString(storageConfigSpec.DatastoreID),
-			StorageClusterID: TowerString(storageConfigSpec.StorageClusterID),
+			DatastoreID:      storageConfigSpec.DatastoreID,
+			StorageClusterID: storageConfigSpec.StorageClusterID,
 		}
 	}
 

@@ -95,17 +95,13 @@ func (c *MachineContext) GetElfClusterID() string {
 }
 
 // GetStorageConfig returns the cluster-level storage configuration for the machine.
+// The controller validates that at most one configuration is set before using it.
 func (c *MachineContext) GetStorageConfig() *infrav1.StorageConfig {
-	if c == nil || c.ElfCluster == nil {
+	if c == nil || c.ElfCluster == nil || len(c.ElfCluster.Spec.StorageCluster) == 0 {
 		return nil
 	}
 
-	sc := &c.ElfCluster.Spec.StorageCluster
-	if sc.DatastoreID == "" && sc.StorageClusterID == "" {
-		return nil
-	}
-
-	return sc
+	return &c.ElfCluster.Spec.StorageCluster[0]
 }
 
 // GenerateHostname generates a hostname for the machine.
